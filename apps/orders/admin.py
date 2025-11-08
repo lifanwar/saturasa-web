@@ -3,7 +3,7 @@ from django.contrib import admin
 from django.utils.html import format_html
 from django.db.models import Sum
 from .models import Order, OrderItem, OrderTimeline, CustomerAnalytics
-
+from decimal import Decimal
 
 class OrderItemInline(admin.TabularInline):
     """Inline untuk OrderItem di Order admin."""
@@ -94,33 +94,95 @@ class OrderAdmin(admin.ModelAdmin):
     
     def total_display(self, obj):
         """Tampilkan total dengan currency."""
+        # 1. Safe conversion ke Decimal (handle None/empty)
+        try:
+            amount = Decimal(str(obj.total_amount))
+        except (ValueError, TypeError, AttributeError):
+            amount = Decimal('0')
+
+        # 2. Format sebagai string dulu (avoid format code issue)
         if obj.total_currency == 'IDR':
-            return format_html('<strong>Rp {:,.0f}</strong>', obj.total_amount)
-        return format_html('<strong>{} {:,.2f}</strong>', obj.total_currency, obj.total_amount)
+            formatted = f'Rp {amount:,.0f}'
+        else:
+            formatted = f'{obj.total_currency} {amount:,.2f}'
+
+        # 3. Escape HTML dengan format_html (security)
+        return format_html('<strong>{}</strong>', formatted)
+
     total_display.short_description = 'Total'
     total_display.admin_order_field = 'total_amount'
     
     actions = ['mark_as_confirmed', 'mark_as_preparing', 'mark_as_ready', 'mark_as_completed']
     
     def mark_as_confirmed(self, request, queryset):
-        queryset.update(status='CONFIRMED')
-        self.message_user(request, 'Orders marked as CONFIRMED.')
+        """Confirm selected orders dan create timeline."""
+        for order in queryset:
+            order.status = 'CONFIRMED'
+            order.save()
+            
+            # Create timeline entry
+            OrderTimeline.objects.create(
+                order=order,
+                status='CONFIRMED',
+                note='Order confirmed by admin',
+                created_by=request.user
+            )
+        
+        count = queryset.count()
+        self.message_user(request, f'{count} order(s) marked as CONFIRMED.')
     mark_as_confirmed.short_description = 'Confirm selected orders'
     
     def mark_as_preparing(self, request, queryset):
-        queryset.update(status='PREPARING')
-        self.message_user(request, 'Orders marked as PREPARING.')
+        """Mark as preparing dan create timeline."""
+        for order in queryset:
+            order.status = 'PREPARING'
+            order.save()
+            
+            OrderTimeline.objects.create(
+                order=order,
+                status='PREPARING',
+                note='Order preparation started',
+                created_by=request.user
+            )
+        
+        count = queryset.count()
+        self.message_user(request, f'{count} order(s) marked as PREPARING.')
     mark_as_preparing.short_description = 'Mark as Preparing'
     
     def mark_as_ready(self, request, queryset):
-        queryset.update(status='READY')
-        self.message_user(request, 'Orders marked as READY.')
+        """Mark as ready dan create timeline."""
+        for order in queryset:
+            order.status = 'READY'
+            order.save()
+            
+            OrderTimeline.objects.create(
+                order=order,
+                status='READY',
+                note='Order ready for pickup/delivery',
+                created_by=request.user
+            )
+        
+        count = queryset.count()
+        self.message_user(request, f'{count} order(s) marked as READY.')
     mark_as_ready.short_description = 'Mark as Ready'
     
     def mark_as_completed(self, request, queryset):
-        queryset.update(status='COMPLETED')
-        self.message_user(request, 'Orders marked as COMPLETED.')
+        """Mark as completed dan create timeline."""
+        for order in queryset:
+            order.status = 'COMPLETED'
+            order.save()
+            
+            OrderTimeline.objects.create(
+                order=order,
+                status='COMPLETED',
+                note='Order completed',
+                created_by=request.user
+            )
+        
+        count = queryset.count()
+        self.message_user(request, f'{count} order(s) marked as COMPLETED.')
     mark_as_completed.short_description = 'Mark as Completed'
+    
 
 
 @admin.register(OrderItem)
