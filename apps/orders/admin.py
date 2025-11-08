@@ -5,6 +5,7 @@ from django.db.models import Sum
 from .models import Order, OrderItem, OrderTimeline, CustomerAnalytics
 from decimal import Decimal
 
+
 class OrderItemInline(admin.TabularInline):
     """Inline untuk OrderItem di Order admin."""
     model = OrderItem
@@ -94,95 +95,204 @@ class OrderAdmin(admin.ModelAdmin):
     
     def total_display(self, obj):
         """Tampilkan total dengan currency."""
-        # 1. Safe conversion ke Decimal (handle None/empty)
         try:
             amount = Decimal(str(obj.total_amount))
         except (ValueError, TypeError, AttributeError):
             amount = Decimal('0')
 
-        # 2. Format sebagai string dulu (avoid format code issue)
         if obj.total_currency == 'IDR':
             formatted = f'Rp {amount:,.0f}'
         else:
             formatted = f'{obj.total_currency} {amount:,.2f}'
 
-        # 3. Escape HTML dengan format_html (security)
         return format_html('<strong>{}</strong>', formatted)
 
     total_display.short_description = 'Total'
     total_display.admin_order_field = 'total_amount'
     
-    actions = ['mark_as_confirmed', 'mark_as_preparing', 'mark_as_ready', 'mark_as_completed']
-    
+    actions = ['mark_as_confirmed', 'mark_as_preparing', 'mark_as_ready', 'mark_as_completed', 'mark_as_cancelled']
+
     def mark_as_confirmed(self, request, queryset):
-        """Confirm selected orders dan create timeline."""
-        for order in queryset:
-            order.status = 'CONFIRMED'
-            order.save()
-            
-            # Create timeline entry
-            OrderTimeline.objects.create(
-                order=order,
-                status='CONFIRMED',
-                note='Order confirmed by admin',
-                created_by=request.user
-            )
-        
-        count = queryset.count()
-        self.message_user(request, f'{count} order(s) marked as CONFIRMED.')
-    mark_as_confirmed.short_description = 'Confirm selected orders'
-    
+        """Confirm orders and RESERVE stock."""
+        from django.db import transaction
+
+        success = 0
+        failed = []
+
+        for order in queryset.filter(status='PENDING'):
+            try:
+                with transaction.atomic():
+                    # Check & Reserve stock
+                    stock_ok = True
+                    errors = []
+
+                    for item in order.items.select_related('menu_item'):
+                        menu = item.menu_item
+                        if not menu.is_unlimited_stock:
+                            if menu.available_stock < item.quantity:
+                                stock_ok = False
+                                errors.append(f"{menu.name} (need {item.quantity}, available {menu.available_stock})")
+
+                    if not stock_ok:
+                        failed.append(f"{order.order_number}: {', '.join(errors)}")
+                        continue
+                    
+                    # Reserve stock (not deduct yet)
+                    for item in order.items.select_related('menu_item'):
+                        if not item.menu_item.is_unlimited_stock:
+                            item.menu_item.reserve_stock(item.quantity)
+
+                    # Update order
+                    order.status = 'CONFIRMED'
+                    order.save()
+
+                    OrderTimeline.objects.create(
+                        order=order,
+                        status='CONFIRMED',
+                        note='Order confirmed, stock reserved',
+                        created_by=request.user
+                    )
+                    success += 1
+            except Exception as e:
+                failed.append(f"{order.order_number}: {str(e)}")
+
+        if success:
+            self.message_user(request, f'✅ {success} order(s) confirmed, stock reserved', level='SUCCESS')
+        if failed:
+            self.message_user(request, f'❌ Failed: {"; ".join(failed)}', level='ERROR')
+
+    mark_as_confirmed.short_description = '✅ Confirm orders (reserve stock)'
+
     def mark_as_preparing(self, request, queryset):
-        """Mark as preparing dan create timeline."""
-        for order in queryset:
-            order.status = 'PREPARING'
-            order.save()
-            
-            OrderTimeline.objects.create(
-                order=order,
-                status='PREPARING',
-                note='Order preparation started',
-                created_by=request.user
-            )
-        
-        count = queryset.count()
-        self.message_user(request, f'{count} order(s) marked as PREPARING.')
-    mark_as_preparing.short_description = 'Mark as Preparing'
-    
+        """Mark as preparing and DEDUCT stock."""
+        from django.db import transaction
+
+        success = 0
+        failed = []
+
+        for order in queryset.filter(status='CONFIRMED'):
+            try:
+                with transaction.atomic():
+                    # Check stock (seharusnya sudah reserved)
+                    stock_ok = True
+                    errors = []
+
+                    for item in order.items.select_related('menu_item'):
+                        menu = item.menu_item
+                        if not menu.is_unlimited_stock:
+                            if menu.stock_quantity < item.quantity:
+                                stock_ok = False
+                                errors.append(f"{menu.name} (need {item.quantity}, have {menu.stock_quantity})")
+
+                    if not stock_ok:
+                        failed.append(f"{order.order_number}: {', '.join(errors)}")
+                        continue
+                    
+                    # Deduct stock (release reserved and reduce total)
+                    for item in order.items.select_related('menu_item'):
+                        if not item.menu_item.is_unlimited_stock:
+                            item.menu_item.deduct_stock(item.quantity)
+
+                    # Update order
+                    order.status = 'PREPARING'
+                    order.save()
+
+                    OrderTimeline.objects.create(
+                        order=order,
+                        status='PREPARING',
+                        note='Preparation started, stock deducted',
+                        created_by=request.user
+                    )
+                    success += 1
+            except Exception as e:
+                failed.append(f"{order.order_number}: {str(e)}")
+
+        if success:
+            self.message_user(request, f'👨‍🍳 {success} order(s) preparing, stock deducted', level='SUCCESS')
+        if failed:
+            self.message_user(request, f'❌ Failed: {"; ".join(failed)}', level='ERROR')
+
+    mark_as_preparing.short_description = '👨‍🍳 Mark as Preparing (deduct stock)'
+
     def mark_as_ready(self, request, queryset):
-        """Mark as ready dan create timeline."""
-        for order in queryset:
+        """Mark as ready (no stock action)."""
+        count = 0
+        for order in queryset.filter(status='PREPARING'):
             order.status = 'READY'
             order.save()
-            
+
             OrderTimeline.objects.create(
                 order=order,
                 status='READY',
-                note='Order ready for pickup/delivery',
+                note='Order ready',
                 created_by=request.user
             )
-        
-        count = queryset.count()
-        self.message_user(request, f'{count} order(s) marked as READY.')
-    mark_as_ready.short_description = 'Mark as Ready'
-    
+            count += 1
+
+        self.message_user(request, f'🔔 {count} order(s) ready')
+    mark_as_ready.short_description = '🔔 Mark as Ready'
+
     def mark_as_completed(self, request, queryset):
-        """Mark as completed dan create timeline."""
-        for order in queryset:
+        """Mark as completed (no stock action)."""
+        count = 0
+        for order in queryset.filter(status__in=['READY', 'PREPARING']):
             order.status = 'COMPLETED'
             order.save()
-            
+
             OrderTimeline.objects.create(
                 order=order,
                 status='COMPLETED',
                 note='Order completed',
                 created_by=request.user
             )
+            count += 1
+
+        self.message_user(request, f'✔️ {count} order(s) completed')
+    mark_as_completed.short_description = '✔️ Mark as Completed'
+
+    def mark_as_cancelled(self, request, queryset):
+        """Cancel orders and release/restore stock."""
+        from django.db import transaction
         
-        count = queryset.count()
-        self.message_user(request, f'{count} order(s) marked as COMPLETED.')
-    mark_as_completed.short_description = 'Mark as Completed'
+        count = 0
+        for order in queryset.filter(status__in=['PENDING', 'CONFIRMED', 'PREPARING']):
+            with transaction.atomic():
+                # Determine stock action based on status
+                if order.status == 'CONFIRMED':
+                    # Release reserved stock
+                    for item in order.items.select_related('menu_item'):
+                        if not item.menu_item.is_unlimited_stock:
+                            item.menu_item.release_stock(item.quantity)
+                    note = 'Order cancelled, reserved stock released'
+                
+                elif order.status == 'PREPARING':
+                    # Restore deducted stock (add back to stock_quantity)
+                    for item in order.items.select_related('menu_item'):
+                        menu = item.menu_item
+                        if not menu.is_unlimited_stock:
+                            menu.stock_quantity += item.quantity
+                            menu.save(update_fields=['stock_quantity'])
+                    note = 'Order cancelled, deducted stock restored'
+                
+                else:  # PENDING
+                    note = 'Order cancelled'
+                
+                # Update order
+                order.status = 'CANCELLED'
+                order.save()
+                
+                OrderTimeline.objects.create(
+                    order=order,
+                    status='CANCELLED',
+                    note=note,
+                    created_by=request.user
+                )
+                count += 1
+        
+        self.message_user(request, f'❌ {count} order(s) cancelled')
+    mark_as_cancelled.short_description = '❌ Cancel orders'
     
+
 
 
 @admin.register(OrderItem)

@@ -12,14 +12,13 @@ def checkout_view(request):
     """Show checkout page dengan cart items."""
     if request.method == 'POST':
         try:
-            # Get cart data dari POST (hanya id + quantity)
             cart_data = json.loads(request.POST.get('cart_data', '[]'))
             
             if not cart_data:
                 messages.error(request, 'Cart kosong!')
                 return redirect('menu:menu_list')
             
-            # Validate & build cart items dengan data dari DB
+            # Validate & build cart items
             cart_items = []
             total = 0
             currency = 'IDR'
@@ -34,6 +33,23 @@ def checkout_view(request):
                     quantity = int(item['quantity'])
                     if quantity <= 0:
                         continue
+                    
+                    # Check stock - BLOCK jika tidak cukup
+                    if not menu_item.is_unlimited_stock:
+                        if menu_item.is_out_of_stock():
+                            messages.error(
+                                request, 
+                                f'❌ {menu_item.name} sudah habis! Silakan hapus dari cart atau pilih menu lain.'
+                            )
+                            return redirect('menu:menu_list')
+                        
+                        if menu_item.available_stock < quantity:
+                            messages.error(
+                                request, 
+                                f'❌ Stock {menu_item.name} tidak cukup! Tersedia: {menu_item.available_stock} {menu_item.stock_unit}, Anda pesan: {quantity}. Silakan kurangi jumlah pesanan.'
+                            )
+                            return redirect('menu:menu_list')
+
                     
                     subtotal = menu_item.price_amount * quantity
                     
@@ -56,7 +72,6 @@ def checkout_view(request):
                 messages.error(request, 'Tidak ada item valid di cart!')
                 return redirect('menu:menu_list')
             
-            # Render checkout page dengan validated data
             context = {
                 'cart_items': cart_items,
                 'total': total,
@@ -70,16 +85,14 @@ def checkout_view(request):
             messages.error(request, f'Error: {str(e)}')
             return redirect('menu:menu_list')
     
-    # GET request - redirect ke menu
     return redirect('menu:menu_list')
 
 
 def checkout_confirm(request):
-    """Process order confirmation."""
+    """Process order confirmation - NO stock action at PENDING."""
     if request.method == 'POST':
         try:
             with transaction.atomic():
-                # Get form data
                 customer_name = request.POST.get('customer_name', '').strip()
                 order_type = request.POST.get('order_type')
                 cart_data = json.loads(request.POST.get('cart_data', '[]'))
@@ -97,7 +110,7 @@ def checkout_confirm(request):
                     messages.error(request, 'Cart kosong!')
                     return redirect('menu:menu_list')
                 
-                # Create Order
+                # Create Order (PENDING - no stock action)
                 order = Order.objects.create(
                     order_number=generate_order_number(),
                     customer=None,
@@ -111,7 +124,7 @@ def checkout_confirm(request):
                     total_currency='IDR',
                 )
                 
-                # Create Order Items dengan validasi
+                # Create Order Items (no stock reservation)
                 subtotal = 0
                 for item in cart_data:
                     try:
@@ -137,7 +150,7 @@ def checkout_confirm(request):
                     except MenuItem.DoesNotExist:
                         continue
                 
-                # Update order totals
+                # Update totals
                 order.subtotal_amount = subtotal
                 order.total_amount = subtotal
                 order.save()
@@ -146,7 +159,7 @@ def checkout_confirm(request):
                 OrderTimeline.objects.create(
                     order=order,
                     status='PENDING',
-                    note='Order created, waiting for admin confirmation'
+                    note='Order created, waiting admin confirmation'
                 )
                 
                 messages.success(request, f'Order berhasil! Nomor: {order.order_number}')

@@ -33,7 +33,6 @@ class CategoryAdmin(admin.ModelAdmin):
         return format_html('<strong>{}</strong> items', count)
     item_count.short_description = 'Menu Items'
 
-
 @admin.register(MenuItem)
 class MenuItemAdmin(admin.ModelAdmin):
     """Admin untuk MenuItem model."""
@@ -52,8 +51,8 @@ class MenuItemAdmin(admin.ModelAdmin):
             'fields': ('price_amount', 'price_currency')
         }),
         ('Stock Management', {
-            'fields': ('stock_quantity', 'stock_unit', 'is_unlimited_stock', 'low_stock_threshold'),
-            'description': 'Update stock quantity manually setiap hari'
+            'fields': ('stock_quantity', 'stock_reserved', 'stock_unit', 'is_unlimited_stock', 'low_stock_threshold'),
+            'description': 'Update stock_quantity manual. Stock_reserved auto-update dari pending orders.'
         }),
         ('Availability & Flags', {
             'fields': ('is_available', 'is_best_seller', 'is_new')
@@ -67,6 +66,8 @@ class MenuItemAdmin(admin.ModelAdmin):
         }),
     )
     
+    readonly_fields = ['stock_reserved']
+    
     def price_display(self, obj):
         """Format harga dengan currency."""
         return obj.get_price_display()
@@ -74,16 +75,43 @@ class MenuItemAdmin(admin.ModelAdmin):
     price_display.admin_order_field = 'price_amount'
     
     def stock_status(self, obj):
-        """Tampilkan status stok dengan warna."""
+        """Tampilkan status stok dengan warna dan info reserved."""
         if obj.is_unlimited_stock:
-            return format_html('<span style="color: green;">♾️ Unlimited</span>')
-        elif obj.is_out_of_stock():
-            return format_html('<span style="color: red;">❌ Out of Stock</span>')
+            return format_html('<span style="color: green; font-weight: bold;">♾️ Unlimited</span>')
+        
+        # Get stock info
+        available = obj.available_stock
+        total = obj.stock_quantity
+        reserved = obj.stock_reserved
+        
+        # Determine status
+        if obj.is_out_of_stock():
+            color = 'red'
+            icon = '❌'
+            status = 'OUT OF STOCK'
         elif obj.is_low_stock():
-            return format_html('<span style="color: orange;">⚠️ Low ({}/{})</span>', obj.stock_quantity, obj.low_stock_threshold)
+            color = 'orange'
+            icon = '⚠️'
+            status = 'LOW STOCK'
         else:
-            return format_html('<span style="color: green;">✅ {}</span>', obj.stock_quantity)
-    stock_status.short_description = 'Stock Status'
+            color = 'green'
+            icon = '✅'
+            status = 'IN STOCK'
+        
+        # Display format
+        if reserved > 0:
+            return format_html(
+                '{} <strong style="color: {};">{}</strong> / {} {}<br>'
+                '<small style="color: gray;">(Reserved: {} | {})</small>',
+                icon, color, available, total, obj.stock_unit, reserved, status
+            )
+        else:
+            return format_html(
+                '{} <strong style="color: {};">{}</strong> {} ({})',
+                icon, color, total, obj.stock_unit, status
+            )
+    
+    stock_status.short_description = 'Stock (Available / Total)'
     
     def availability_badge(self, obj):
         """Badge untuk availability."""

@@ -29,7 +29,6 @@ class Category(TenantAwareModel):
             self.slug = slugify(self.name)
         super().save(*args, **kwargs)
 
-
 class MenuItem(TenantAwareModel):
     """Menu item dengan multi-currency (IDR/EGP) dan stock management."""
     
@@ -51,8 +50,9 @@ class MenuItem(TenantAwareModel):
     # Media
     image = models.ImageField(upload_to='menu_images/%Y/%m/', blank=True, null=True)
     
-    # Stock
+    # Stock Management
     stock_quantity = models.IntegerField(default=0, validators=[MinValueValidator(0)], help_text="Stok tersedia (update manual setiap hari)")
+    stock_reserved = models.IntegerField(default=0, validators=[MinValueValidator(0)], help_text="Stok yang direserve untuk pending orders")  # NEW
     stock_unit = models.CharField(max_length=20, choices=STOCK_UNIT_CHOICES, default='portion')
     is_unlimited_stock = models.BooleanField(default=False, help_text="Centang jika stok unlimited (tidak perlu tracking)")
     low_stock_threshold = models.IntegerField(default=5, validators=[MinValueValidator(0)], help_text="Alert jika stok dibawah angka ini")
@@ -87,17 +87,51 @@ class MenuItem(TenantAwareModel):
             return f"EGP {self.price_amount:,.2f}"
         return f"{self.price_currency} {self.price_amount}"
     
+    @property
+    def available_stock(self):
+        """Stock yang benar-benar available (stock - reserved)."""
+        if self.is_unlimited_stock:
+            return 999999
+        return max(0, self.stock_quantity - self.stock_reserved)
+    
     def is_low_stock(self):
         """Check apakah stok rendah."""
         if self.is_unlimited_stock:
             return False
-        return self.stock_quantity <= self.low_stock_threshold
+        return self.available_stock <= self.low_stock_threshold
     
     def is_out_of_stock(self):
         """Check apakah stok habis."""
         if self.is_unlimited_stock:
             return False
-        return self.stock_quantity == 0
+        return self.available_stock == 0
+    
+    def reserve_stock(self, quantity):
+        """Reserve stock untuk pending order."""
+        if self.is_unlimited_stock:
+            return True
+        if self.available_stock >= quantity:
+            self.stock_reserved += quantity
+            self.save(update_fields=['stock_reserved'])
+            return True
+        return False
+    
+    def release_stock(self, quantity):
+        """Release reserved stock (cancelled order)."""
+        if not self.is_unlimited_stock:
+            self.stock_reserved = max(0, self.stock_reserved - quantity)
+            self.save(update_fields=['stock_reserved'])
+    
+    def deduct_stock(self, quantity):
+        """Deduct stock saat order confirmed."""
+        if self.is_unlimited_stock:
+            return True
+        if self.stock_quantity >= quantity:
+            self.stock_quantity -= quantity
+            self.stock_reserved = max(0, self.stock_reserved - quantity)
+            self.save(update_fields=['stock_quantity', 'stock_reserved'])
+            return True
+        return False
     
     def save(self, *args, **kwargs):
         if not self.slug:
