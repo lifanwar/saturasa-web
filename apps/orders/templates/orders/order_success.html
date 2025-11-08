@@ -8,7 +8,7 @@
     
     <!-- Success Icon -->
     <div class="text-center mb-8">
-        <div class="text-8xl mb-4">✅</div>
+        <i class="fas fa-check-circle text-8xl text-success mb-4"></i>
         <h1 class="text-4xl font-bold mb-2 text-success">Order Berhasil!</h1>
         <p class="text-lg text-base-content/70">Pesanan Anda telah dibuat</p>
     </div>
@@ -23,44 +23,103 @@
         </div>
     </div>
 
-    <!-- Status Alert -->
-    <div class="alert alert-warning shadow-lg mb-6">
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
-        </svg>
+    <!-- Status Alert - DYNAMIC with Font Awesome -->
+    <div class="alert 
+        {% if order.status == 'PENDING' %}alert-warning
+        {% elif order.status == 'CONFIRMED' %}alert-info
+        {% elif order.status == 'PREPARING' %}alert-info
+        {% elif order.status == 'READY' %}alert-success
+        {% elif order.status == 'COMPLETED' %}alert-success
+        {% else %}alert-error
+        {% endif %} 
+        shadow-lg mb-6">
+        
+        <!-- Dynamic Icon -->
+        <i class="
+            {% if order.status == 'PENDING' %}fas fa-clock
+            {% elif order.status == 'CONFIRMED' %}fas fa-check-circle
+            {% elif order.status == 'PREPARING' %}fas fa-utensils
+            {% elif order.status == 'READY' %}fas fa-bell
+            {% elif order.status == 'COMPLETED' %}fas fa-check-double
+            {% else %}fas fa-times-circle
+            {% endif %} 
+            text-2xl"></i>
+        
         <div>
-            <h3 class="font-bold">⏳ Status: PENDING</h3>
-            <div class="text-sm">Pesanan Anda sedang menunggu konfirmasi dari admin. Mohon tunggu sebentar.</div>
+            <h3 class="font-bold">
+                {% if order.status == 'PENDING' %}
+                    <i class="fas fa-hourglass-half mr-2"></i>Status: PENDING
+                {% elif order.status == 'CONFIRMED' %}
+                    <i class="fas fa-check-circle mr-2"></i>Status: CONFIRMED
+                {% elif order.status == 'PREPARING' %}
+                    <i class="fas fa-fire mr-2"></i>Status: PREPARING
+                {% elif order.status == 'READY' %}
+                    <i class="fas fa-check-square mr-2"></i>Status: READY
+                {% elif order.status == 'COMPLETED' %}
+                    <i class="fas fa-trophy mr-2"></i>Status: COMPLETED
+                {% elif order.status == 'CANCELLED' %}
+                    <i class="fas fa-ban mr-2"></i>Status: CANCELLED
+                {% endif %}
+            </h3>
+            <div class="text-sm">
+                {% if order.status == 'PENDING' %}
+                    Pesanan Anda sedang menunggu konfirmasi dari admin.
+                {% elif order.status == 'CONFIRMED' %}
+                    Pesanan telah dikonfirmasi! Sedang diproses oleh kitchen.
+                {% elif order.status == 'PREPARING' %}
+                    Pesanan sedang disiapkan. Mohon tunggu sebentar.
+                {% elif order.status == 'READY' %}
+                    Pesanan siap! Silakan ambil pesanan Anda.
+                {% elif order.status == 'COMPLETED' %}
+                    Pesanan selesai. Terima kasih atas pesanan Anda!
+                {% elif order.status == 'CANCELLED' %}
+                    Pesanan dibatalkan.
+                {% endif %}
+                <br><small class="opacity-70"><i class="fas fa-sync-alt mr-1"></i>Refresh halaman (F5) untuk update status terbaru</small>
+            </div>
         </div>
     </div>
 
     <!-- Order Details -->
     <div class="card bg-base-100 shadow-xl mb-6">
         <div class="card-body">
-            <h2 class="card-title mb-4">📋 Detail Order</h2>
+            <h2 class="card-title mb-4">
+                <i class="fas fa-clipboard-list mr-2"></i>Detail Order
+            </h2>
             
             <!-- Customer Info -->
             <div class="grid grid-cols-2 gap-3 mb-4 text-sm">
                 <div>
-                    <p class="text-base-content/60">Customer</p>
+                    <p class="text-base-content/60"><i class="fas fa-user mr-1"></i>Customer</p>
                     <p class="font-semibold">{{ order.customer_display_name }}</p>
                 </div>
                 <div>
-                    <p class="text-base-content/60">Tipe Order</p>
+                    <p class="text-base-content/60"><i class="fas fa-shopping-bag mr-1"></i>Tipe Order</p>
                     <p>
                         {% if order.order_type == 'DINE_IN' %}
-                            <span class="badge badge-primary">🍽️ Dine In</span>
+                            <span class="badge badge-primary"><i class="fas fa-utensils mr-1"></i>Dine In</span>
                         {% elif order.order_type == 'TAKEAWAY' %}
-                            <span class="badge badge-secondary">📦 Takeaway</span>
+                            <span class="badge badge-secondary"><i class="fas fa-box mr-1"></i>Takeaway</span>
+                        {% elif order.order_type == 'DELIVERY' %}
+                            <span class="badge badge-accent"><i class="fas fa-motorcycle mr-1"></i>Delivery</span>
                         {% endif %}
                     </p>
                 </div>
                 <div>
-                    <p class="text-base-content/60">Channel</p>
-                    <p><span class="badge badge-ghost">{{ order.get_order_channel_display }}</span></p>
+                    <p class="text-base-content/60"><i class="fas fa-store mr-1"></i>Channel</p>
+                    <p>
+                        <span class="badge badge-ghost">
+                            {% if order.order_channel == 'ONLINE' %}
+                                <i class="fas fa-globe mr-1"></i>
+                            {% else %}
+                                <i class="fas fa-store-alt mr-1"></i>
+                            {% endif %}
+                            {{ order.get_order_channel_display }}
+                        </span>
+                    </p>
                 </div>
                 <div>
-                    <p class="text-base-content/60">Waktu Order</p>
+                    <p class="text-base-content/60"><i class="fas fa-clock mr-1"></i>Waktu Order</p>
                     <p class="font-semibold">{{ order.created_at|date:"d M Y, H:i" }}</p>
                 </div>
             </div>
@@ -68,13 +127,13 @@
             <div class="divider"></div>
             
             <!-- Order Items -->
-            <h3 class="font-bold mb-3">Items:</h3>
+            <h3 class="font-bold mb-3"><i class="fas fa-list mr-2"></i>Items:</h3>
             <div class="space-y-2">
                 {% for item in order.items.all %}
                 <div class="flex justify-between items-center py-2 border-b border-base-200">
                     <div class="flex-1">
-                        <p class="font-medium">{{ item.menu_item.name }}</p>
-                        <p class="text-sm text-base-content/60">
+                        <p class="font-medium"><i class="fas fa-circle text-xs mr-2 text-primary"></i>{{ item.menu_item.name }}</p>
+                        <p class="text-sm text-base-content/60 ml-5">
                             {% if item.price_currency == 'IDR' %}
                                 Rp {{ item.price_amount|floatformat:0 }}
                             {% else %}
@@ -98,7 +157,7 @@
             
             <!-- Total -->
             <div class="flex justify-between items-center text-2xl font-bold">
-                <span>Total:</span>
+                <span><i class="fas fa-receipt mr-2"></i>Total:</span>
                 <span class="text-success">
                     {% if order.total_currency == 'IDR' %}
                         Rp {{ order.total_amount|floatformat:0 }}
@@ -113,18 +172,13 @@
     <!-- Action Buttons -->
     <div class="flex flex-col sm:flex-row gap-4 justify-center">
         <a href="{% url 'menu:menu_list' %}" class="btn btn-primary btn-lg">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-            </svg>
+            <i class="fas fa-plus-circle mr-2"></i>
             Order Lagi
         </a>
         
         {% if user.is_staff %}
         <a href="{% url 'admin:orders_order_change' order.id %}" class="btn btn-ghost btn-lg">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
+            <i class="fas fa-cog mr-2"></i>
             Kelola di Admin
         </a>
         {% endif %}
@@ -132,6 +186,7 @@
 
     <!-- Info Footer -->
     <div class="text-center mt-8 text-sm text-base-content/60">
+        <i class="fas fa-info-circle mr-1"></i>
         <p>Simpan nomor order Anda untuk tracking pesanan</p>
     </div>
 
