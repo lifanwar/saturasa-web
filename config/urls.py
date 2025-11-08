@@ -5,7 +5,8 @@ from django.conf.urls.static import static
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('menu/', include('apps.menu.urls')),  # Menu sebagai homepage
+    path('menu/', include('apps.menu.urls')),  
+    path('orders/', include('apps.orders.urls')),
 ]
 
 if settings.DEBUG:

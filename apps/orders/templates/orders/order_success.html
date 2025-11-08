@@ -1,0 +1,139 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Order Berhasil - {{ order.order_number }}{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto py-12">
+    
+    <!-- Success Icon -->
+    <div class="text-center mb-8">
+        <div class="text-8xl mb-4">✅</div>
+        <h1 class="text-4xl font-bold mb-2 text-success">Order Berhasil!</h1>
+        <p class="text-lg text-base-content/70">Pesanan Anda telah dibuat</p>
+    </div>
+
+    <!-- Order Number Card -->
+    <div class="card bg-gradient-to-r from-primary to-secondary text-primary-content shadow-2xl mb-6">
+        <div class="card-body text-center">
+            <p class="text-sm opacity-80">Nomor Order</p>
+            <p class="text-3xl md:text-4xl font-mono font-bold tracking-wider">
+                {{ order.order_number }}
+            </p>
+        </div>
+    </div>
+
+    <!-- Status Alert -->
+    <div class="alert alert-warning shadow-lg mb-6">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+        </svg>
+        <div>
+            <h3 class="font-bold">⏳ Status: PENDING</h3>
+            <div class="text-sm">Pesanan Anda sedang menunggu konfirmasi dari admin. Mohon tunggu sebentar.</div>
+        </div>
+    </div>
+
+    <!-- Order Details -->
+    <div class="card bg-base-100 shadow-xl mb-6">
+        <div class="card-body">
+            <h2 class="card-title mb-4">📋 Detail Order</h2>
+            
+            <!-- Customer Info -->
+            <div class="grid grid-cols-2 gap-3 mb-4 text-sm">
+                <div>
+                    <p class="text-base-content/60">Customer</p>
+                    <p class="font-semibold">{{ order.customer_display_name }}</p>
+                </div>
+                <div>
+                    <p class="text-base-content/60">Tipe Order</p>
+                    <p>
+                        {% if order.order_type == 'DINE_IN' %}
+                            <span class="badge badge-primary">🍽️ Dine In</span>
+                        {% elif order.order_type == 'TAKEAWAY' %}
+                            <span class="badge badge-secondary">📦 Takeaway</span>
+                        {% endif %}
+                    </p>
+                </div>
+                <div>
+                    <p class="text-base-content/60">Channel</p>
+                    <p><span class="badge badge-ghost">{{ order.get_order_channel_display }}</span></p>
+                </div>
+                <div>
+                    <p class="text-base-content/60">Waktu Order</p>
+                    <p class="font-semibold">{{ order.created_at|date:"d M Y, H:i" }}</p>
+                </div>
+            </div>
+            
+            <div class="divider"></div>
+            
+            <!-- Order Items -->
+            <h3 class="font-bold mb-3">Items:</h3>
+            <div class="space-y-2">
+                {% for item in order.items.all %}
+                <div class="flex justify-between items-center py-2 border-b border-base-200">
+                    <div class="flex-1">
+                        <p class="font-medium">{{ item.menu_item.name }}</p>
+                        <p class="text-sm text-base-content/60">
+                            {% if item.price_currency == 'IDR' %}
+                                Rp {{ item.price_amount|floatformat:0 }}
+                            {% else %}
+                                {{ item.price_currency }} {{ item.price_amount|floatformat:2 }}
+                            {% endif %}
+                            × {{ item.quantity }}
+                        </p>
+                    </div>
+                    <div class="text-right font-semibold">
+                        {% if item.subtotal_currency == 'IDR' %}
+                            Rp {{ item.subtotal_amount|floatformat:0 }}
+                        {% else %}
+                            {{ item.subtotal_currency }} {{ item.subtotal_amount|floatformat:2 }}
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            
+            <div class="divider"></div>
+            
+            <!-- Total -->
+            <div class="flex justify-between items-center text-2xl font-bold">
+                <span>Total:</span>
+                <span class="text-success">
+                    {% if order.total_currency == 'IDR' %}
+                        Rp {{ order.total_amount|floatformat:0 }}
+                    {% else %}
+                        {{ order.total_currency }} {{ order.total_amount|floatformat:2 }}
+                    {% endif %}
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="flex flex-col sm:flex-row gap-4 justify-center">
+        <a href="{% url 'menu:menu_list' %}" class="btn btn-primary btn-lg">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+            </svg>
+            Order Lagi
+        </a>
+        
+        {% if user.is_staff %}
+        <a href="{% url 'admin:orders_order_change' order.id %}" class="btn btn-ghost btn-lg">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            Kelola di Admin
+        </a>
+        {% endif %}
+    </div>
+
+    <!-- Info Footer -->
+    <div class="text-center mt-8 text-sm text-base-content/60">
+        <p>Simpan nomor order Anda untuk tracking pesanan</p>
+    </div>
+
+</div>
+{% endblock %}

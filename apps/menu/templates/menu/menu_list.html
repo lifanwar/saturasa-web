@@ -55,7 +55,8 @@
                         <p class="text-sm text-base-content/70 mb-3">{{ item.description|truncatewords:10 }}</p>
                         <div class="flex justify-between items-center">
                             <span class="text-xl font-bold">{{ item.get_price_display }}</span>
-                            <button @click="addToCart('{{ item.name }}', {{ item.price_amount }}, '{{ item.price_currency }}')" 
+                            <!-- FIXED: Tambahkan {{ item.id }} sebagai parameter pertama -->
+                            <button @click="addToCart({{ item.id }}, '{{ item.name }}', {{ item.price_amount }}, '{{ item.price_currency }}')" 
                                     class="btn btn-circle btn-sm bg-green-600 hover:bg-green-700 text-white border-0">+</button>
                         </div>
                     </div>
@@ -64,6 +65,7 @@
             {% endfor %}
         </div>
     </section>
+
 
     <!-- Floating Cart -->
     <aside x-show="cart.length > 0" class="fixed bottom-20 right-6 z-50 sm:bottom-6">
@@ -102,13 +104,21 @@
                 </template>
             </div>
             
-            <div class="pt-3 border-t border-base-300">
-                <div class="flex justify-between items-center mb-3">
-                    <span class="font-bold">Total:</span>
-                    <span class="font-bold text-lg text-green-600" x-text="formattedTotal"></span>
+            <form method="POST" action="{% url 'orders:checkout' %}" @submit="prepareCheckout">
+                {% csrf_token %}
+                <input type="hidden" name="cart_data" x-model="cartDataJson">
+                <div class="pt-3 border-t border-base-300">
+                    <div class="flex justify-between items-center mb-3">
+                        <span class="font-bold">Total:</span>
+                        <span class="font-bold text-lg text-green-600" x-text="formattedTotal"></span>
+                    </div>
+                    <button type="submit" class="btn btn-block bg-green-600 hover:bg-green-700 text-white border-0 btn-sm">
+                        Checkout
+                    </button>
                 </div>
-                <button class="btn btn-block bg-green-600 hover:bg-green-700 text-white border-0 btn-sm">Checkout</button>
-            </div>
+            </form>
+            
+
         </div>
     </aside>
 
@@ -154,7 +164,7 @@
                     <p class="text-sm text-base-content/70 mb-3">{{ item.description|truncatewords:15 }}</p>
                     <div class="flex justify-between items-center">
                         <span class="text-xl font-bold">{{ item.get_price_display }}</span>
-                        <button @click="addToCart('{{ item.name }}', {{ item.price_amount }}, '{{ item.price_currency }}')" 
+                        <button @click="addToCart({{ item.id }}, '{{ item.name }}', {{ item.price_amount }}, '{{ item.price_currency }}')" 
                                 class="btn btn-circle btn-sm bg-green-600 hover:bg-green-700 text-white border-0">+</button>
                     </div>
                 </div>
@@ -174,12 +184,21 @@
             showCart: false,
             filterCategory: 'all',
             
-            addToCart(name, price, currency) {
-                const existingItem = this.cart.find(item => item.name === name);
+            // Fixed: Pastikan semua data tersimpan dengan benar
+            addToCart(id, name, price, currency) {
+                // Cari berdasarkan id (bukan name)
+                const existingItem = this.cart.find(item => item.id === id);
                 if (existingItem) {
                     existingItem.quantity += 1;
                 } else {
-                    this.cart.push({ name, price, currency, quantity: 1 });
+                    // Pastikan semua property tersimpan
+                    this.cart.push({ 
+                        id: id,
+                        name: name, 
+                        price: price, 
+                        currency: currency, 
+                        quantity: 1 
+                    });
                 }
                 this.showCart = false;
             },
@@ -217,7 +236,6 @@
             },
             
             get formattedTotal() {
-                // Assume semua item pakai currency yang sama (simplifikasi)
                 if (this.cart.length > 0) {
                     return this.formatPrice(this.totalPrice, this.cart[0].currency);
                 }
@@ -226,8 +244,26 @@
             
             get totalItems() {
                 return this.cart.reduce((sum, item) => sum + item.quantity, 0);
+            },
+            
+            get cartDataJson() {
+                return JSON.stringify(
+                    this.cart.map(item => ({
+                        id: item.id,
+                        quantity: item.quantity
+                    }))
+                );
+            },
+            
+            prepareCheckout(e) {
+                if (this.cart.length === 0) {
+                    e.preventDefault();
+                    alert('Cart kosong!');
+                }
             }
         }
     }
 </script>
+
+
 {% endblock %}
