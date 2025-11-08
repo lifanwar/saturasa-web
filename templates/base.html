@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="light">
+<head>
+    {% include 'includes/head.html' %}
+</head>
+<body class="bg-base-200">
+    
+    {% include 'includes/navbar.html' %}
+    
+    {% include 'includes/messages.html' %}
+
+    <main class="container mx-auto px-4 py-8">
+        {% block content %}
+        <!-- Content dari child template akan masuk di sini -->
+         
+        {% endblock %}
+    </main>
+
+    {% include 'includes/footer.html' %}
+    
+    <script>
+        // Load saved theme from localStorage
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+        
+        // Update checkbox state
+        const themeController = document.querySelector('.theme-controller');
+        if (themeController && savedTheme === 'dark') {
+            themeController.checked = true;
+        }
+        
+        // Listen for theme changes
+        if (themeController) {
+            themeController.addEventListener('change', (e) => {
+                const newTheme = e.target.checked ? 'dark' : 'light';
+                document.documentElement.setAttribute('data-theme', newTheme);
+                localStorage.setItem('theme', newTheme);
+            });
+        }
+    </script>
+    
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

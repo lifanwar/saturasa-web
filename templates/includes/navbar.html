@@ -1,0 +1,19 @@
+<header>
+    <nav class="navbar bg-base-100 shadow-lg" aria-label="Main navigation">
+        <div class="flex-1">
+            <a href="/" class="btn btn-ghost text-xl">
+                <i class="fas fa-utensils" aria-hidden="true"></i>
+                <span>Restaurant App</span>
+            </a>
+        </div>
+        <div class="flex-none">
+            <ul class="menu menu-horizontal px-1">
+                <li><a href="/menu/">Menu</a></li>
+                <li><a href="/orders/">Orders</a></li>
+                <li><a href="/customers/">Customers</a></li>
+            </ul>
+            
+            {% include 'includes/theme_toggle.html' %}
+        </div>
+    </nav>
+</header>

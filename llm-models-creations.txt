@@ -1,0 +1,39 @@
+# Restaurant Ordering System - Models Context
+
+## Apps Structure:
+- core: TenantAwareModel (abstract base)
+- menu: Category, MenuItem (multi-currency, stock management)
+- customers: Customer (guest/member with phone as unique ID)
+- orders: Order, OrderItem, OrderTimeline, CustomerAnalytics
+
+## Key Features:
+- Multi-currency: IDR & EGP per menu item
+- Multi-channel: ONLINE/OFFLINE × DINE_IN/TAKEAWAY/DELIVERY
+- Guest checkout: No registration required (phone + name)
+- Member system: Django User integration
+- Stock tracking: Manual daily updates
+- Analytics: Order timeline & customer stats
+- Offline walk-in: No customer record needed
+
+## Business Rules:
+- Phone number = unique customer identifier
+- Price snapshot in OrderItem
+- Auto is_available=False when stock=0
+- Guest can upgrade to member (history preserved)
+- Status flow: PENDING→CONFIRMED→PREPARING→READY→COMPLETED
+
+## Database Relationships:
+- Category 1:N MenuItem
+- Customer 1:1 User (nullable)
+- Customer 1:N Order (nullable for walk-in)
+- Order 1:N OrderItem
+- Order 1:N OrderTimeline
+- Customer 1:1 CustomerAnalytics
+- MenuItem N:1 OrderItem
+
+## Current Implementation Status:
+✅ Models defined
+⏳ Migrations pending
+⏳ Admin registration pending
+⏳ Views implementation pending
+⏳ Templates pending
