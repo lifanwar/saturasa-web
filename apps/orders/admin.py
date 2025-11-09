@@ -2,8 +2,10 @@
 from django.contrib import admin
 from django.utils.html import format_html
 from django.db.models import Sum
-from .models import Order, OrderItem, OrderTimeline, CustomerAnalytics
+from .models import Order, OrderItem, OrderTimeline, CustomerAnalytics, MenuOrderLog
 from decimal import Decimal
+# from .analytics import MenuAnalytics
+
 
 
 class OrderItemInline(admin.TabularInline):
@@ -361,3 +363,55 @@ class CustomerAnalyticsAdmin(admin.ModelAdmin):
     def has_delete_permission(self, request, obj=None):
         """Disable delete."""
         return False
+
+@admin.register(MenuOrderLog)
+class MenuOrderLogAdmin(admin.ModelAdmin):
+    """Admin untuk Menu Order Log."""
+    
+    list_display = ['order_number', 'menu_item_name', 'quantity', 'subtotal_display', 'completed_date', 'order_type']
+    list_filter = ['completed_year_month', 'category_name', 'order_type', 'order_channel', 'completed_date']
+    search_fields = ['order_number', 'menu_item_name']
+    ordering = ['-completed_at']
+    date_hierarchy = 'completed_date'
+    
+    fieldsets = (
+        ('Order Info', {
+            'fields': ('order_number', 'order_type', 'order_channel')
+        }),
+        ('Menu Info', {
+            'fields': ('menu_item_id', 'menu_item_name', 'category_name')
+        }),
+        ('Transaction', {
+            'fields': ('quantity', 'price_amount', 'price_currency', 'subtotal_amount')
+        }),
+        ('Time Dimensions', {
+            'fields': ('completed_at', 'completed_date', 'completed_year_month', 'completed_year')
+        }),
+    )
+    
+    readonly_fields = [
+        'order_number', 'order_type', 'order_channel',
+        'menu_item_id', 'menu_item_name', 'category_name',
+        'quantity', 'price_amount', 'price_currency', 'subtotal_amount',
+        'completed_at', 'completed_date', 'completed_year_month', 'completed_year'
+    ]
+    
+    def subtotal_display(self, obj):
+        """Format subtotal dengan currency."""
+        if obj.price_currency == 'IDR':
+            return f"Rp {obj.subtotal_amount:,.0f}"
+        return f"{obj.price_currency} {obj.subtotal_amount:,.2f}"
+    subtotal_display.short_description = 'Subtotal'
+    subtotal_display.admin_order_field = 'subtotal_amount'
+
+    def has_add_permission(self, request):
+        """Disable manual add (auto-created via signal)."""
+        return False
+    
+    def has_change_permission(self, request, obj=None):
+        """Disable edit (immutable log)."""
+        return False
+    
+    def has_delete_permission(self, request, obj=None):
+        """Allow delete only for superuser (cleanup old data)."""
+        return request.user.is_superuser

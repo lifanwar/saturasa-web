@@ -141,3 +141,42 @@ class CustomerAnalytics(TenantAwareModel):
     
     def __str__(self):
         return f"Analytics for {self.customer.name}"
+
+
+class MenuOrderLog(TenantAwareModel):
+    """Transaction log for menu analytics - immutable, append-only."""
+    
+    # Order context
+    order_number = models.CharField(max_length=50, db_index=True)
+    order_type = models.CharField(max_length=20)    # DINE_IN, TAKEAWAY, DELIVERY
+    order_channel = models.CharField(max_length=10) # ONLINE, OFFLINE
+    
+    # Menu info (denormalized snapshot)
+    menu_item_id = models.IntegerField(db_index=True)
+    menu_item_name = models.CharField(max_length=200)
+    category_name = models.CharField(max_length=100)
+    
+    # Transaction details
+    quantity = models.IntegerField()
+    price_amount = models.DecimalField(max_digits=15, decimal_places=2)
+    price_currency = models.CharField(max_length=3, default='IDR')
+    subtotal_amount = models.DecimalField(max_digits=15, decimal_places=2)
+    
+    # Time dimensions (pre-computed for fast query)
+    completed_at = models.DateTimeField(db_index=True)
+    completed_date = models.DateField(db_index=True)
+    completed_year_month = models.CharField(max_length=7, db_index=True)  # '2025-01'
+    completed_year = models.IntegerField(db_index=True)
+    
+    class Meta:
+        verbose_name_plural = "Menu Order Logs"
+        ordering = ['-completed_at']
+        indexes = [
+            models.Index(fields=['menu_item_id', 'completed_year_month']),
+            models.Index(fields=['completed_date']),
+            models.Index(fields=['category_name', 'completed_year_month']),
+        ]
+    
+    def __str__(self):
+        return f"{self.menu_item_name} x{self.quantity} - {self.order_number}"
+
