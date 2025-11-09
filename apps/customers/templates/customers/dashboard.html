@@ -232,13 +232,13 @@
                                 <td>{{ order.items.count }} item(s)</td>
                                 <td>
                                     <span class="font-semibold">
-                                        {% if order.total.currency == 'IDR' %}
-                                            Rp {{ order.total.amount|floatformat:0 }}
+                                        {% if order.total_currency == 'IDR' %}
+                                            Rp {{ order.total_amount|floatformat:0 }}
                                         {% else %}
-                                            {{ order.total.currency }} {{ order.total.amount|floatformat:2 }}
+                                            {{ order.total_currency }} {{ order.total_amount|floatformat:2 }}
                                         {% endif %}
                                     </span>
-                                </td>
+                                </td>                                
                                 <td>
                                     <span class="badge badge-sm 
                                         {% if order.status == 'PENDING' %}badge-warning
