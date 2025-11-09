@@ -68,55 +68,55 @@
         </div>
 
         <!-- Sidebar -->
-        <aside class="fixed lg:static inset-y-0 left-0 z-50 w-64 bg-base-100 shadow-lg transform transition-transform duration-300 lg:transform-none"
-               :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'">
-            <ul class="menu p-4 space-y-2 mt-16 lg:mt-0">
-                <li>
-                    <a :class="activeMenu === 'dashboard' ? 'active bg-orange-500 text-white' : ''" 
-                       @click="activeMenu = 'dashboard'; sidebarOpen = false">
-                        <i class="fa-solid fa-chart-line"></i> Dashboard
-                    </a>
-                </li>
-                <li>
-                    <a :class="activeMenu === 'orders' ? 'active bg-orange-500 text-white' : ''" 
-                       @click="activeMenu = 'orders'; sidebarOpen = false">
-                        <i class="fa-solid fa-receipt"></i> Orders
-                    </a>
-                </li>
-                <li>
-                    <a :class="activeMenu === 'messages' ? 'active bg-orange-500 text-white' : ''" 
-                       @click="activeMenu = 'messages'; sidebarOpen = false">
-                        <i class="fa-solid fa-envelope"></i> Messages
-                        <span class="badge badge-sm badge-error">3</span>
-                    </a>
-                </li>
-                <li>
-                    <a :class="activeMenu === 'calendar' ? 'active bg-orange-500 text-white' : ''" 
-                       @click="activeMenu = 'calendar'; sidebarOpen = false">
-                        <i class="fa-solid fa-calendar"></i> Calendar
-                    </a>
-                </li>
-                <li>
-                    <a :class="activeMenu === 'products' ? 'active bg-orange-500 text-white' : ''" 
-                       @click="activeMenu = 'products'; sidebarOpen = false">
-                        <i class="fa-solid fa-box"></i> Products
-                    </a>
-                </li>
-                <li>
-                    <a :class="activeMenu === 'inventory' ? 'active bg-orange-500 text-white' : ''" 
-                       @click="activeMenu = 'inventory'; sidebarOpen = false">
-                        <i class="fa-solid fa-warehouse"></i> Inventory
-                    </a>
-                </li>
-                <li>
-                    <a :class="activeMenu === 'purchase' ? 'active bg-orange-500 text-white' : ''" 
-                       @click="activeMenu = 'purchase'; sidebarOpen = false">
-                        <i class="fa-solid fa-cart-shopping"></i> Purchase
-                    </a>
-                </li>
-            </ul>
+        <aside class="fixed lg:static inset-y-0 left-0 z-50 w-64 bg-base-100 shadow-lg -translate-x-full lg:translate-x-0 transform transition-transform duration-300"
+        :class="sidebarOpen ? '!translate-x-0' : ''">
+        <ul class="menu p-4 space-y-2 mt-16 lg:mt-0">
+         <li>
+             <a :class="activeMenu === 'dashboard' ? 'active bg-orange-500 text-white' : ''" 
+                @click="activeMenu = 'dashboard'; sidebarOpen = false">
+                 <i class="fa-solid fa-chart-line"></i> Dashboard
+             </a>
+         </li>
+         <li>
+             <a :class="activeMenu === 'orders' ? 'active bg-orange-500 text-white' : ''" 
+                @click="activeMenu = 'orders'; sidebarOpen = false">
+                 <i class="fa-solid fa-receipt"></i> Orders
+             </a>
+         </li>
+         <li>
+             <a :class="activeMenu === 'messages' ? 'active bg-orange-500 text-white' : ''" 
+                @click="activeMenu = 'messages'; sidebarOpen = false">
+                 <i class="fa-solid fa-envelope"></i> Messages
+                 <span class="badge badge-sm badge-error">3</span>
+             </a>
+         </li>
+         <li>
+             <a :class="activeMenu === 'calendar' ? 'active bg-orange-500 text-white' : ''" 
+                @click="activeMenu = 'calendar'; sidebarOpen = false">
+                 <i class="fa-solid fa-calendar"></i> Calendar
+             </a>
+         </li>
+         <li>
+             <a :class="activeMenu === 'products' ? 'active bg-orange-500 text-white' : ''" 
+                @click="activeMenu = 'products'; sidebarOpen = false">
+                 <i class="fa-solid fa-box"></i> Products
+             </a>
+         </li>
+         <li>
+             <a :class="activeMenu === 'inventory' ? 'active bg-orange-500 text-white' : ''" 
+                @click="activeMenu = 'inventory'; sidebarOpen = false">
+                 <i class="fa-solid fa-warehouse"></i> Inventory
+             </a>
+         </li>
+         <li>
+             <a :class="activeMenu === 'purchase' ? 'active bg-orange-500 text-white' : ''" 
+                @click="activeMenu = 'purchase'; sidebarOpen = false">
+                 <i class="fa-solid fa-cart-shopping"></i> Purchase
+             </a>
+         </li>
+        </ul>
         </aside>
-
+        
         <!-- Main Content -->
         <main class="flex-1 p-4 lg:p-6">
             <!-- Header Section -->
