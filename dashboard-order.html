@@ -1,0 +1,884 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Restiro - Orders Management</title>
+    
+    <!-- Tailwind CSS + DaisyUI -->
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@4.4.19/dist/full.min.css" rel="stylesheet" type="text/css" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Alpine.js -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.3/dist/cdn.min.js"></script>
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+    
+    <style>
+        [x-cloak] { display: none !important; }
+        
+        /* Ensure minimum height for table container */
+        .table-wrapper {
+            min-height: 500px;
+        }
+    </style>
+</head>
+<body class="bg-base-200" x-data="ordersApp()">
+    
+    <!-- Navbar -->
+    <div class="navbar bg-base-100 shadow-md sticky top-0 z-50">
+        <div class="flex-1">
+            <!-- Hamburger Button for Mobile -->
+            <button class="btn btn-ghost lg:hidden" @click="sidebarOpen = !sidebarOpen">
+                <i class="fa-solid fa-bars text-xl"></i>
+            </button>
+            <a class="btn btn-ghost text-xl">
+                <i class="fa-solid fa-utensils text-orange-500"></i>
+                <span class="font-bold">Restiro</span>
+            </a>
+        </div>
+        <div class="flex-none gap-2">
+            <button class="btn btn-ghost btn-circle">
+                <i class="fa-solid fa-bell"></i>
+            </button>
+            <div class="dropdown dropdown-end">
+                <label tabindex="0" class="btn btn-ghost btn-circle avatar">
+                    <div class="w-10 rounded-full bg-orange-500 text-white flex items-center justify-center">
+                        <i class="fa-solid fa-user"></i>
+                    </div>
+                </label>
+                <ul tabindex="0" class="mt-3 z-[1] p-2 shadow menu menu-sm dropdown-content bg-base-100 rounded-box w-52">
+                    <li><a><i class="fa-solid fa-user-circle"></i> Profile</a></li>
+                    <li><a><i class="fa-solid fa-gear"></i> Settings</a></li>
+                    <li><a><i class="fa-solid fa-right-from-bracket"></i> Logout</a></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Container -->
+    <div class="flex min-h-screen">
+        <!-- Sidebar Overlay for Mobile -->
+        <div class="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden" 
+             x-show="sidebarOpen" 
+             @click="sidebarOpen = false"
+             x-cloak
+             x-transition:enter="transition-opacity ease-linear duration-300"
+             x-transition:enter-start="opacity-0"
+             x-transition:enter-end="opacity-100"
+             x-transition:leave="transition-opacity ease-linear duration-300"
+             x-transition:leave-start="opacity-100"
+             x-transition:leave-end="opacity-0">
+        </div>
+
+        <!-- Sidebar -->
+        <aside class="fixed lg:static inset-y-0 left-0 z-50 w-64 bg-base-100 shadow-lg transform transition-transform duration-300 lg:transform-none"
+               :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'">
+            <ul class="menu p-4 space-y-2 mt-16 lg:mt-0">
+                <li>
+                    <a :class="activeMenu === 'dashboard' ? 'active bg-orange-500 text-white' : ''" 
+                       @click="activeMenu = 'dashboard'; sidebarOpen = false">
+                        <i class="fa-solid fa-chart-line"></i> Dashboard
+                    </a>
+                </li>
+                <li>
+                    <a :class="activeMenu === 'orders' ? 'active bg-orange-500 text-white' : ''" 
+                       @click="activeMenu = 'orders'; sidebarOpen = false">
+                        <i class="fa-solid fa-receipt"></i> Orders
+                    </a>
+                </li>
+                <li>
+                    <a :class="activeMenu === 'messages' ? 'active bg-orange-500 text-white' : ''" 
+                       @click="activeMenu = 'messages'; sidebarOpen = false">
+                        <i class="fa-solid fa-envelope"></i> Messages
+                        <span class="badge badge-sm badge-error">3</span>
+                    </a>
+                </li>
+                <li>
+                    <a :class="activeMenu === 'calendar' ? 'active bg-orange-500 text-white' : ''" 
+                       @click="activeMenu = 'calendar'; sidebarOpen = false">
+                        <i class="fa-solid fa-calendar"></i> Calendar
+                    </a>
+                </li>
+                <li>
+                    <a :class="activeMenu === 'products' ? 'active bg-orange-500 text-white' : ''" 
+                       @click="activeMenu = 'products'; sidebarOpen = false">
+                        <i class="fa-solid fa-box"></i> Products
+                    </a>
+                </li>
+                <li>
+                    <a :class="activeMenu === 'inventory' ? 'active bg-orange-500 text-white' : ''" 
+                       @click="activeMenu = 'inventory'; sidebarOpen = false">
+                        <i class="fa-solid fa-warehouse"></i> Inventory
+                    </a>
+                </li>
+                <li>
+                    <a :class="activeMenu === 'purchase' ? 'active bg-orange-500 text-white' : ''" 
+                       @click="activeMenu = 'purchase'; sidebarOpen = false">
+                        <i class="fa-solid fa-cart-shopping"></i> Purchase
+                    </a>
+                </li>
+            </ul>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 p-4 lg:p-6 flex flex-col">
+            <!-- Header Section -->
+            <div class="mb-6">
+                <div class="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
+                    <div>
+                        <h1 class="text-2xl lg:text-3xl font-bold">Orders Management</h1>
+                        <div class="text-sm breadcrumbs">
+                            <ul>
+                                <li><i class="fa-solid fa-house"></i> Home</li>
+                                <li><i class="fa-solid fa-receipt"></i> Orders</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="flex gap-2 items-center">
+                        <!-- Search Input -->
+                        <div class="form-control flex-1 sm:flex-initial">
+                            <input type="text" placeholder="Search orders..." class="input input-bordered w-full sm:w-64" 
+                                   x-model="searchQuery" @input="filterOrders()">
+                        </div>
+                        
+                        <!-- Filter Dropdown -->
+                        <div class="dropdown dropdown-end">
+                            <label tabindex="0" class="btn btn-circle btn-ghost">
+                                <i class="fa-solid fa-filter text-lg"></i>
+                            </label>
+                            <div tabindex="0" class="dropdown-content z-[1] card card-compact w-80 sm:w-96 p-4 shadow bg-base-100 rounded-box mt-3">
+                                <div class="card-body p-0">
+                                    <h3 class="font-semibold text-lg mb-3 flex items-center gap-2">
+                                        <i class="fa-solid fa-filter text-orange-500"></i> Filters
+                                    </h3>
+                                    <div class="space-y-3">
+                                        <div class="form-control">
+                                            <label class="label">
+                                                <span class="label-text"><i class="fa-solid fa-hashtag"></i> Order Number</span>
+                                            </label>
+                                            <input type="text" placeholder="Enter Order Number" class="input input-bordered input-sm" 
+                                                   x-model="filters.orderNumber" @input="filterOrders()">
+                                        </div>
+                                        <div class="form-control">
+                                            <label class="label">
+                                                <span class="label-text"><i class="fa-solid fa-user"></i> Customer</span>
+                                            </label>
+                                            <input type="text" placeholder="Customer Name" class="input input-bordered input-sm" 
+                                                   x-model="filters.customer" @input="filterOrders()">
+                                        </div>
+                                        <div class="form-control">
+                                            <label class="label">
+                                                <span class="label-text"><i class="fa-solid fa-globe"></i> Channel</span>
+                                            </label>
+                                            <select class="select select-bordered select-sm w-full" x-model="filters.channel" @change="filterOrders()">
+                                                <option value="">All Channels</option>
+                                                <option value="Online">Online</option>
+                                                <option value="Offline">Offline</option>
+                                            </select>
+                                        </div>
+                                        <div class="form-control">
+                                            <label class="label">
+                                                <span class="label-text"><i class="fa-solid fa-motorcycle"></i> Type</span>
+                                            </label>
+                                            <select class="select select-bordered select-sm w-full" x-model="filters.type" @change="filterOrders()">
+                                                <option value="">All Types</option>
+                                                <option value="Dine In">Dine In</option>
+                                                <option value="Takeaway">Takeaway</option>
+                                                <option value="Delivery">Delivery</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="flex gap-2 mt-4">
+                                        <button class="btn btn-sm btn-ghost flex-1" @click="resetFilters()">
+                                            <i class="fa-solid fa-rotate-left"></i> Reset
+                                        </button>
+                                        <button class="btn btn-sm btn-primary bg-orange-500 border-none text-white hover:bg-orange-600 flex-1">
+                                            <i class="fa-solid fa-check"></i> Apply
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- New Order Button -->
+                        <button class="btn btn-primary bg-orange-500 border-none hover:bg-orange-600 text-white" 
+                                @click="openNewOrderModal()">
+                            <i class="fa-solid fa-plus"></i>
+                            <span class="hidden sm:inline">New Order</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Status Tabs -->
+            <div class="flex flex-wrap justify-center lg:justify-start gap-2 lg:gap-3 mb-6">
+                <button class="btn btn-sm" 
+                        :class="activeTab === 'all' ? 'bg-orange-500 text-white border-orange-500 hover:bg-orange-600' : 'btn-outline'" 
+                        @click="activeTab = 'all'; filterOrders()">
+                    <i class="fa-solid fa-list"></i> All
+                </button>
+                <button class="btn btn-sm" 
+                        :class="activeTab === 'pending' ? 'bg-orange-500 text-white border-orange-500 hover:bg-orange-600' : 'btn-outline'" 
+                        @click="activeTab = 'pending'; filterOrders()">
+                    <i class="fa-solid fa-clock"></i> Pending
+                </button>
+                <button class="btn btn-sm" 
+                        :class="activeTab === 'confirmed' ? 'bg-orange-500 text-white border-orange-500 hover:bg-orange-600' : 'btn-outline'" 
+                        @click="activeTab = 'confirmed'; filterOrders()">
+                    <i class="fa-solid fa-check"></i> Confirmed
+                </button>
+                <button class="btn btn-sm" 
+                        :class="activeTab === 'preparing' ? 'bg-orange-500 text-white border-orange-500 hover:bg-orange-600' : 'btn-outline'" 
+                        @click="activeTab = 'preparing'; filterOrders()">
+                    <i class="fa-solid fa-fire-burner"></i> Preparing
+                </button>
+                <button class="btn btn-sm" 
+                        :class="activeTab === 'ready' ? 'bg-orange-500 text-white border-orange-500 hover:bg-orange-600' : 'btn-outline'" 
+                        @click="activeTab = 'ready'; filterOrders()">
+                    <i class="fa-solid fa-bell-concierge"></i> Ready
+                </button>
+                <button class="btn btn-sm" 
+                        :class="activeTab === 'completed' ? 'bg-orange-500 text-white border-orange-500 hover:bg-orange-600' : 'btn-outline'" 
+                        @click="activeTab = 'completed'; filterOrders()">
+                    <i class="fa-solid fa-circle-check"></i> Completed
+                </button>
+                <button class="btn btn-sm" 
+                        :class="activeTab === 'cancelled' ? 'bg-orange-500 text-white border-orange-500 hover:bg-orange-600' : 'btn-outline'" 
+                        @click="activeTab = 'cancelled'; filterOrders()">
+                    <i class="fa-solid fa-circle-xmark"></i> Cancelled
+                </button>
+            </div>
+
+            <!-- Orders Table - Desktop View -->
+            <div class="hidden lg:block bg-base-100 rounded-lg shadow overflow-hidden flex-1 flex flex-col">
+                <div class="overflow-x-auto table-wrapper flex-1">
+                    <table class="table table-zebra">
+                        <thead class="bg-base-100 sticky top-0">
+                            <tr>
+                                <th><i class="fa-solid fa-hashtag"></i> Order Number</th>
+                                <th><i class="fa-solid fa-user"></i> Customer</th>
+                                <th><i class="fa-solid fa-store"></i> Channel & Type</th>
+                                <th><i class="fa-solid fa-utensils"></i> Order Items</th>
+                                <th><i class="fa-solid fa-dollar-sign"></i> Total</th>
+                                <th><i class="fa-solid fa-info-circle"></i> Status</th>
+                                <th><i class="fa-solid fa-ellipsis-vertical"></i> Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template x-for="order in filteredOrders" :key="order.id">
+                                <tr class="hover">
+                                    <td>
+                                        <span class="font-semibold text-primary" x-text="order.orderNumber"></span>
+                                        <br>
+                                        <span class="text-xs text-gray-500" x-text="order.orderDate"></span>
+                                    </td>
+                                    <td>
+                                        <div class="flex items-center gap-3">
+                                            <div class="avatar placeholder">
+                                                <div class="bg-orange-500 text-white rounded-full w-10">
+                                                    <span class="text-xs" x-text="order.customer.charAt(0)"></span>
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <div class="font-medium" x-text="order.customer"></div>
+                                                <div class="text-xs text-gray-500" x-text="order.phone"></div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="flex flex-col gap-1">
+                                            <span class="badge badge-sm" 
+                                                  :class="order.channel === 'Online' ? 'badge-info' : 'badge-neutral'" 
+                                                  x-text="order.channel"></span>
+                                            <span class="badge badge-sm badge-outline" x-text="order.type"></span>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="text-sm" x-text="order.items"></div>
+                                        <div class="text-xs text-gray-500" x-text="order.itemCount + ' items'"></div>
+                                    </td>
+                                    <td>
+                                        <span class="font-semibold text-lg" x-text="'$' + order.total.toFixed(2)"></span>
+                                    </td>
+                                    <td>
+                                        <span class="badge badge-sm" 
+                                              :class="{
+                                                  'badge-warning': order.status === 'Pending',
+                                                  'badge-info': order.status === 'Confirmed',
+                                                  'badge-primary': order.status === 'Preparing',
+                                                  'badge-accent': order.status === 'Ready',
+                                                  'badge-success': order.status === 'Completed',
+                                                  'badge-error': order.status === 'Cancelled'
+                                              }" 
+                                              x-text="order.status"></span>
+                                    </td>
+                                    <td>
+                                        <div class="flex gap-1">
+                                            <!-- Detail Button -->
+                                            <div class="tooltip" data-tip="Detail">
+                                                <button class="btn btn-ghost btn-xs" @click="viewOrderDetail(order)">
+                                                    <i class="fa-solid fa-eye"></i>
+                                                </button>
+                                            </div>
+                                            
+                                            <!-- Status Progression Buttons -->
+                                            <template x-if="order.status === 'Pending'">
+                                                <div class="tooltip" data-tip="Confirm">
+                                                    <button class="btn btn-ghost btn-xs text-info" @click="updateStatus(order, 'Confirmed')">
+                                                        <i class="fa-solid fa-check"></i>
+                                                    </button>
+                                                </div>
+                                            </template>
+                                            
+                                            <template x-if="order.status === 'Confirmed'">
+                                                <div class="tooltip" data-tip="Start Preparing">
+                                                    <button class="btn btn-ghost btn-xs text-primary" @click="updateStatus(order, 'Preparing')">
+                                                        <i class="fa-solid fa-fire-burner"></i>
+                                                    </button>
+                                                </div>
+                                            </template>
+                                            
+                                            <template x-if="order.status === 'Preparing'">
+                                                <div class="tooltip" data-tip="Mark as Ready">
+                                                    <button class="btn btn-ghost btn-xs text-accent" @click="updateStatus(order, 'Ready')">
+                                                        <i class="fa-solid fa-bell-concierge"></i>
+                                                    </button>
+                                                </div>
+                                            </template>
+                                            
+                                            <template x-if="order.status === 'Ready'">
+                                                <div class="tooltip" data-tip="Complete Order">
+                                                    <button class="btn btn-ghost btn-xs text-success" @click="updateStatus(order, 'Completed')">
+                                                        <i class="fa-solid fa-circle-check"></i>
+                                                    </button>
+                                                </div>
+                                            </template>
+                                            
+                                            <!-- Cancel Button (available for non-completed/cancelled orders) -->
+                                            <template x-if="order.status !== 'Completed' && order.status !== 'Cancelled'">
+                                                <div class="tooltip" data-tip="Cancel">
+                                                    <button class="btn btn-ghost btn-xs text-warning" @click="updateStatus(order, 'Cancelled')">
+                                                        <i class="fa-solid fa-ban"></i>
+                                                    </button>
+                                                </div>
+                                            </template>
+                                            
+                                            <!-- Delete Button -->
+                                            <div class="tooltip" data-tip="Delete">
+                                                <button class="btn btn-ghost btn-xs text-error" @click="deleteOrder(order)">
+                                                    <i class="fa-solid fa-trash"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Pagination -->
+                <div class="flex flex-col sm:flex-row justify-between items-center p-4 border-t gap-4 bg-base-100">
+                    <div class="text-sm text-gray-600">
+                        Showing <span x-text="filteredOrders.length"></span> of <span x-text="orders.length"></span> orders
+                    </div>
+                    <div class="join">
+                        <button class="join-item btn btn-sm">«</button>
+                        <button class="join-item btn btn-sm btn-active">1</button>
+                        <button class="join-item btn btn-sm">2</button>
+                        <button class="join-item btn btn-sm">3</button>
+                        <button class="join-item btn btn-sm">»</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Orders Cards - Mobile View -->
+            <div class="lg:hidden space-y-4">
+                <template x-for="order in filteredOrders" :key="order.id">
+                    <div class="card bg-base-100 shadow">
+                        <div class="card-body p-4">
+                            <div class="flex justify-between items-start mb-3">
+                                <div>
+                                    <h3 class="font-semibold text-primary" x-text="order.orderNumber"></h3>
+                                    <p class="text-xs text-gray-500" x-text="order.orderDate"></p>
+                                </div>
+                                <span class="badge badge-sm" 
+                                      :class="{
+                                          'badge-warning': order.status === 'Pending',
+                                          'badge-info': order.status === 'Confirmed',
+                                          'badge-primary': order.status === 'Preparing',
+                                          'badge-accent': order.status === 'Ready',
+                                          'badge-success': order.status === 'Completed',
+                                          'badge-error': order.status === 'Cancelled'
+                                      }" 
+                                      x-text="order.status"></span>
+                            </div>
+                            
+                            <div class="flex items-center gap-3 mb-3">
+                                <div class="avatar placeholder">
+                                    <div class="bg-orange-500 text-white rounded-full w-10">
+                                        <span class="text-xs" x-text="order.customer.charAt(0)"></span>
+                                    </div>
+                                </div>
+                                <div class="flex-1">
+                                    <div class="font-medium text-sm" x-text="order.customer"></div>
+                                    <div class="text-xs text-gray-500" x-text="order.phone"></div>
+                                </div>
+                            </div>
+                            
+                            <div class="flex gap-2 mb-3">
+                                <span class="badge badge-sm" 
+                                      :class="order.channel === 'Online' ? 'badge-info' : 'badge-neutral'" 
+                                      x-text="order.channel"></span>
+                                <span class="badge badge-sm badge-outline" x-text="order.type"></span>
+                            </div>
+                            
+                            <div class="divider my-2"></div>
+                            
+                            <div class="flex justify-between items-center mb-3">
+                                <div>
+                                    <div class="text-sm" x-text="order.items"></div>
+                                    <div class="text-xs text-gray-500" x-text="order.itemCount + ' items'"></div>
+                                </div>
+                                <div class="font-semibold text-lg text-orange-500" x-text="'$' + order.total.toFixed(2)"></div>
+                            </div>
+                            
+                            <!-- Mobile Action Buttons -->
+                            <div class="grid grid-cols-2 gap-2">
+                                <button class="btn btn-sm btn-outline" @click="viewOrderDetail(order)">
+                                    <i class="fa-solid fa-eye"></i> Detail
+                                </button>
+                                
+                                <!-- Status Progression Button -->
+                                <template x-if="order.status === 'Pending'">
+                                    <button class="btn btn-sm btn-info text-white" @click="updateStatus(order, 'Confirmed')">
+                                        <i class="fa-solid fa-check"></i> Confirm
+                                    </button>
+                                </template>
+                                
+                                <template x-if="order.status === 'Confirmed'">
+                                    <button class="btn btn-sm btn-primary text-white" @click="updateStatus(order, 'Preparing')">
+                                        <i class="fa-solid fa-fire-burner"></i> Prepare
+                                    </button>
+                                </template>
+                                
+                                <template x-if="order.status === 'Preparing'">
+                                    <button class="btn btn-sm btn-accent text-white" @click="updateStatus(order, 'Ready')">
+                                        <i class="fa-solid fa-bell-concierge"></i> Ready
+                                    </button>
+                                </template>
+                                
+                                <template x-if="order.status === 'Ready'">
+                                    <button class="btn btn-sm btn-success text-white" @click="updateStatus(order, 'Completed')">
+                                        <i class="fa-solid fa-circle-check"></i> Complete
+                                    </button>
+                                </template>
+                                
+                                <template x-if="order.status === 'Completed' || order.status === 'Cancelled'">
+                                    <button class="btn btn-sm btn-ghost" disabled>
+                                        <i class="fa-solid fa-check-double"></i> Done
+                                    </button>
+                                </template>
+                            </div>
+                            
+                            <!-- Cancel and Delete Buttons -->
+                            <div class="grid grid-cols-2 gap-2 mt-2">
+                                <template x-if="order.status !== 'Completed' && order.status !== 'Cancelled'">
+                                    <button class="btn btn-sm btn-warning text-white" @click="updateStatus(order, 'Cancelled')">
+                                        <i class="fa-solid fa-ban"></i> Cancel
+                                    </button>
+                                </template>
+                                
+                                <button class="btn btn-sm btn-error text-white" 
+                                        :class="{'col-span-2': order.status === 'Completed' || order.status === 'Cancelled'}"
+                                        @click="deleteOrder(order)">
+                                    <i class="fa-solid fa-trash"></i> Delete
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+                
+                <!-- Mobile Pagination -->
+                <div class="flex justify-center">
+                    <div class="join">
+                        <button class="join-item btn btn-sm">«</button>
+                        <button class="join-item btn btn-sm btn-active">1</button>
+                        <button class="join-item btn btn-sm">2</button>
+                        <button class="join-item btn btn-sm">3</button>
+                        <button class="join-item btn btn-sm">»</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal for Order Detail -->
+    <dialog id="orderDetailModal" class="modal" :class="{'modal-open': showOrderDetailModal}" x-cloak>
+        <div class="modal-box max-w-3xl">
+            <h3 class="font-bold text-lg mb-4">
+                <i class="fa-solid fa-file-invoice text-orange-500"></i> Order Invoice Detail
+            </h3>
+            
+            <template x-if="selectedOrder">
+                <div>
+                    <!-- Invoice Header -->
+                    <div class="bg-base-200 p-4 rounded-lg mb-4">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <p class="text-xs text-gray-500">Order Number</p>
+                                <p class="font-semibold" x-text="selectedOrder.orderNumber"></p>
+                            </div>
+                            <div>
+                                <p class="text-xs text-gray-500">Order Date</p>
+                                <p class="font-semibold" x-text="selectedOrder.orderDate"></p>
+                            </div>
+                            <div>
+                                <p class="text-xs text-gray-500">Customer</p>
+                                <p class="font-semibold" x-text="selectedOrder.customer"></p>
+                                <p class="text-xs" x-text="selectedOrder.phone"></p>
+                            </div>
+                            <div>
+                                <p class="text-xs text-gray-500">Status</p>
+                                <span class="badge" 
+                                      :class="{
+                                          'badge-warning': selectedOrder.status === 'Pending',
+                                          'badge-info': selectedOrder.status === 'Confirmed',
+                                          'badge-primary': selectedOrder.status === 'Preparing',
+                                          'badge-accent': selectedOrder.status === 'Ready',
+                                          'badge-success': selectedOrder.status === 'Completed',
+                                          'badge-error': selectedOrder.status === 'Cancelled'
+                                      }" 
+                                      x-text="selectedOrder.status"></span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Order Items -->
+                    <div class="mb-4">
+                        <h4 class="font-semibold mb-2">Order Items</h4>
+                        <div class="overflow-x-auto">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Item</th>
+                                        <th>Qty</th>
+                                        <th>Price</th>
+                                        <th>Subtotal</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <template x-for="item in selectedOrder.orderItems" :key="item.name">
+                                        <tr>
+                                            <td x-text="item.name"></td>
+                                            <td x-text="item.qty"></td>
+                                            <td x-text="'$' + item.price.toFixed(2)"></td>
+                                            <td x-text="'$' + (item.qty * item.price).toFixed(2)"></td>
+                                        </tr>
+                                    </template>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <!-- Order Summary -->
+                    <div class="bg-base-200 p-4 rounded-lg">
+                        <div class="flex justify-between mb-2">
+                            <span>Subtotal</span>
+                            <span x-text="'$' + selectedOrder.total.toFixed(2)"></span>
+                        </div>
+                        <div class="flex justify-between mb-2">
+                            <span>Tax (10%)</span>
+                            <span x-text="'$' + (selectedOrder.total * 0.1).toFixed(2)"></span>
+                        </div>
+                        <div class="divider my-2"></div>
+                        <div class="flex justify-between font-bold text-lg">
+                            <span>Total</span>
+                            <span class="text-orange-500" x-text="'$' + (selectedOrder.total * 1.1).toFixed(2)"></span>
+                        </div>
+                    </div>
+                </div>
+            </template>
+            
+            <div class="modal-action">
+                <button class="btn" @click="showOrderDetailModal = false">Close</button>
+                <button class="btn btn-primary bg-orange-500 border-none text-white">
+                    <i class="fa-solid fa-print"></i> Print Invoice
+                </button>
+            </div>
+        </div>
+        <form method="dialog" class="modal-backdrop">
+            <button @click="showOrderDetailModal = false">close</button>
+        </form>
+    </dialog>
+
+    <!-- Modal for New Order -->
+    <dialog id="newOrderModal" class="modal" :class="{'modal-open': showNewOrderModal}" x-cloak>
+        <div class="modal-box">
+            <h3 class="font-bold text-lg mb-4">
+                <i class="fa-solid fa-plus text-orange-500"></i> Create New Order
+            </h3>
+            <p class="text-sm text-gray-500 mb-4">This feature will be implemented with POS integration</p>
+            <div class="modal-action">
+                <button class="btn" @click="showNewOrderModal = false">Close</button>
+            </div>
+        </div>
+        <form method="dialog" class="modal-backdrop">
+            <button @click="showNewOrderModal = false">close</button>
+        </form>
+    </dialog>
+
+    <script>
+        function ordersApp() {
+            return {
+                activeMenu: 'orders',
+                activeTab: 'all',
+                searchQuery: '',
+                showOrderDetailModal: false,
+                showNewOrderModal: false,
+                selectedOrder: null,
+                sidebarOpen: false,
+                filters: {
+                    orderNumber: '',
+                    customer: '',
+                    channel: '',
+                    type: ''
+                },
+                orders: [
+                    {
+                        id: 1,
+                        orderNumber: 'ORD-001',
+                        orderDate: '2025-11-09 10:30 AM',
+                        customer: 'John Doe',
+                        phone: '+62 812-3456-7890',
+                        channel: 'Online',
+                        type: 'Delivery',
+                        items: 'Nasi Goreng, Ayam Bakar',
+                        itemCount: 2,
+                        total: 45.50,
+                        status: 'Pending',
+                        orderItems: [
+                            { name: 'Nasi Goreng', qty: 1, price: 25.00 },
+                            { name: 'Ayam Bakar', qty: 1, price: 20.50 }
+                        ]
+                    },
+                    {
+                        id: 2,
+                        orderNumber: 'ORD-002',
+                        orderDate: '2025-11-09 10:45 AM',
+                        customer: 'Jane Smith',
+                        phone: '+62 813-4567-8901',
+                        channel: 'Offline',
+                        type: 'Dine In',
+                        items: 'Pizza Margherita, Coca Cola',
+                        itemCount: 2,
+                        total: 35.00,
+                        status: 'Confirmed',
+                        orderItems: [
+                            { name: 'Pizza Margherita', qty: 1, price: 30.00 },
+                            { name: 'Coca Cola', qty: 1, price: 5.00 }
+                        ]
+                    },
+                    {
+                        id: 3,
+                        orderNumber: 'ORD-003',
+                        orderDate: '2025-11-09 11:00 AM',
+                        customer: 'Robert Johnson',
+                        phone: '+62 814-5678-9012',
+                        channel: 'Online',
+                        type: 'Takeaway',
+                        items: 'Burger, French Fries',
+                        itemCount: 2,
+                        total: 28.75,
+                        status: 'Preparing',
+                        orderItems: [
+                            { name: 'Burger', qty: 1, price: 18.75 },
+                            { name: 'French Fries', qty: 1, price: 10.00 }
+                        ]
+                    },
+                    {
+                        id: 4,
+                        orderNumber: 'ORD-004',
+                        orderDate: '2025-11-09 11:15 AM',
+                        customer: 'Maria Garcia',
+                        phone: '+62 815-6789-0123',
+                        channel: 'Offline',
+                        type: 'Dine In',
+                        items: 'Spaghetti Carbonara, Tiramisu',
+                        itemCount: 2,
+                        total: 42.00,
+                        status: 'Ready',
+                        orderItems: [
+                            { name: 'Spaghetti Carbonara', qty: 1, price: 32.00 },
+                            { name: 'Tiramisu', qty: 1, price: 10.00 }
+                        ]
+                    },
+                    {
+                        id: 5,
+                        orderNumber: 'ORD-005',
+                        orderDate: '2025-11-09 11:30 AM',
+                        customer: 'David Lee',
+                        phone: '+62 816-7890-1234',
+                        channel: 'Online',
+                        type: 'Delivery',
+                        items: 'Chicken Wings, Onion Rings',
+                        itemCount: 2,
+                        total: 32.50,
+                        status: 'Completed',
+                        orderItems: [
+                            { name: 'Chicken Wings', qty: 1, price: 22.50 },
+                            { name: 'Onion Rings', qty: 1, price: 10.00 }
+                        ]
+                    },
+                    {
+                        id: 6,
+                        orderNumber: 'ORD-006',
+                        orderDate: '2025-11-09 09:00 AM',
+                        customer: 'Sarah Brown',
+                        phone: '+62 817-8901-2345',
+                        channel: 'Online',
+                        type: 'Delivery',
+                        items: 'Salad Bowl, Orange Juice',
+                        itemCount: 2,
+                        total: 24.00,
+                        status: 'Cancelled',
+                        orderItems: [
+                            { name: 'Salad Bowl', qty: 1, price: 18.00 },
+                            { name: 'Orange Juice', qty: 1, price: 6.00 }
+                        ]
+                    },
+                    {
+                        id: 7,
+                        orderNumber: 'ORD-007',
+                        orderDate: '2025-11-09 11:45 AM',
+                        customer: 'Michael Wilson',
+                        phone: '+62 818-9012-3456',
+                        channel: 'Offline',
+                        type: 'Takeaway',
+                        items: 'Ramen, Gyoza',
+                        itemCount: 2,
+                        total: 38.50,
+                        status: 'Confirmed',
+                        orderItems: [
+                            { name: 'Ramen', qty: 1, price: 28.50 },
+                            { name: 'Gyoza', qty: 1, price: 10.00 }
+                        ]
+                    },
+                    {
+                        id: 8,
+                        orderNumber: 'ORD-008',
+                        orderDate: '2025-11-09 12:00 PM',
+                        customer: 'Emily Davis',
+                        phone: '+62 819-0123-4567',
+                        channel: 'Online',
+                        type: 'Delivery',
+                        items: 'Steak, Mashed Potato',
+                        itemCount: 2,
+                        total: 65.00,
+                        status: 'Preparing',
+                        orderItems: [
+                            { name: 'Steak', qty: 1, price: 50.00 },
+                            { name: 'Mashed Potato', qty: 1, price: 15.00 }
+                        ]
+                    }
+                ],
+                filteredOrders: [],
+                
+                init() {
+                    this.filteredOrders = this.orders;
+                },
+                
+                filterOrders() {
+                    let filtered = this.orders;
+                    
+                    // Filter by tab
+                    if (this.activeTab !== 'all') {
+                        const statusMap = {
+                            'pending': 'Pending',
+                            'confirmed': 'Confirmed',
+                            'preparing': 'Preparing',
+                            'ready': 'Ready',
+                            'completed': 'Completed',
+                            'cancelled': 'Cancelled'
+                        };
+                        filtered = filtered.filter(order => order.status === statusMap[this.activeTab]);
+                    }
+                    
+                    // Filter by search
+                    if (this.searchQuery) {
+                        const query = this.searchQuery.toLowerCase();
+                        filtered = filtered.filter(order => 
+                            order.orderNumber.toLowerCase().includes(query) ||
+                            order.customer.toLowerCase().includes(query) ||
+                            order.items.toLowerCase().includes(query)
+                        );
+                    }
+                    
+                    // Filter by Order Number
+                    if (this.filters.orderNumber) {
+                        filtered = filtered.filter(order => 
+                            order.orderNumber.toLowerCase().includes(this.filters.orderNumber.toLowerCase())
+                        );
+                    }
+                    
+                    // Filter by Customer
+                    if (this.filters.customer) {
+                        filtered = filtered.filter(order => 
+                            order.customer.toLowerCase().includes(this.filters.customer.toLowerCase())
+                        );
+                    }
+                    
+                    // Filter by Channel
+                    if (this.filters.channel) {
+                        filtered = filtered.filter(order => order.channel === this.filters.channel);
+                    }
+                    
+                    // Filter by Type
+                    if (this.filters.type) {
+                        filtered = filtered.filter(order => order.type === this.filters.type);
+                    }
+                    
+                    this.filteredOrders = filtered;
+                },
+                
+                resetFilters() {
+                    this.filters = {
+                        orderNumber: '',
+                        customer: '',
+                        channel: '',
+                        type: ''
+                    };
+                    this.searchQuery = '';
+                    this.activeTab = 'all';
+                    this.filterOrders();
+                },
+                
+                viewOrderDetail(order) {
+                    this.selectedOrder = order;
+                    this.showOrderDetailModal = true;
+                },
+                
+                updateStatus(order, newStatus) {
+                    if (confirm(`Update order ${order.orderNumber} to ${newStatus}?`)) {
+                        order.status = newStatus;
+                        this.filterOrders();
+                    }
+                },
+                
+                deleteOrder(order) {
+                    if (confirm(`Are you sure you want to delete order ${order.orderNumber}?`)) {
+                        this.orders = this.orders.filter(o => o.id !== order.id);
+                        this.filterOrders();
+                    }
+                },
+                
+                openNewOrderModal() {
+                    this.showNewOrderModal = true;
+                }
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Restiro - Purchase Order Dashboard</title>
+    
+    <!-- Tailwind CSS + DaisyUI -->
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@4.4.19/dist/full.min.css" rel="stylesheet" type="text/css" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Alpine.js -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.3/dist/cdn.min.js"></script>
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+    
+    <style>
+        [x-cloak] { display: none !important; }
+    </style>
+</head>
+<body class="bg-base-200" x-data="purchaseOrderApp()">
+    
+    <!-- Navbar -->
+    <div class="navbar bg-base-100 shadow-md sticky top-0 z-50">
+        <div class="flex-1">
+            <a class="btn btn-ghost text-xl">
+                <i class="fa-solid fa-utensils text-orange-500"></i>
+                <span class="font-bold">Restiro</span>
+            </a>
+        </div>
+        <div class="flex-none gap-2">
+            <button class="btn btn-ghost btn-circle">
+                <i class="fa-solid fa-bell"></i>
+            </button>
+            <div class="dropdown dropdown-end">
+                <label tabindex="0" class="btn btn-ghost btn-circle avatar">
+                    <div class="w-10 rounded-full bg-orange-500 text-white flex items-center justify-center">
+                        <i class="fa-solid fa-user"></i>
+                    </div>
+                </label>
+                <ul tabindex="0" class="mt-3 z-[1] p-2 shadow menu menu-sm dropdown-content bg-base-100 rounded-box w-52">
+                    <li><a><i class="fa-solid fa-user-circle"></i> Profile</a></li>
+                    <li><a><i class="fa-solid fa-gear"></i> Settings</a></li>
+                    <li><a><i class="fa-solid fa-right-from-bracket"></i> Logout</a></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Container -->
+    <div class="flex">
+        <!-- Sidebar -->
+        <aside class="w-64 min-h-screen bg-base-100 shadow-lg">
+            <ul class="menu p-4 space-y-2">
+                <li>
+                    <a :class="activeMenu === 'dashboard' ? 'active bg-orange-500 text-white' : ''" 
+                       @click="activeMenu = 'dashboard'">
+                        <i class="fa-solid fa-chart-line"></i> Dashboard
+                    </a>
+                </li>
+                <li>
+                    <a :class="activeMenu === 'orders' ? 'active bg-orange-500 text-white' : ''" 
+                       @click="activeMenu = 'orders'">
+                        <i class="fa-solid fa-receipt"></i> Orders
+                    </a>
+                </li>
+                <li>
+                    <a :class="activeMenu === 'messages' ? 'active bg-orange-500 text-white' : ''" 
+                       @click="activeMenu = 'messages'">
+                        <i class="fa-solid fa-envelope"></i> Messages
+                        <span class="badge badge-sm badge-error">3</span>
+                    </a>
+                </li>
+                <li>
+                    <a :class="activeMenu === 'calendar' ? 'active bg-orange-500 text-white' : ''" 
+                       @click="activeMenu = 'calendar'">
+                        <i class="fa-solid fa-calendar"></i> Calendar
+                    </a>
+                </li>
+                <li>
+                    <a :class="activeMenu === 'products' ? 'active bg-orange-500 text-white' : ''" 
+                       @click="activeMenu = 'products'">
+                        <i class="fa-solid fa-box"></i> Products
+                    </a>
+                </li>
+                <li>
+                    <a :class="activeMenu === 'inventory' ? 'active bg-orange-500 text-white' : ''" 
+                       @click="activeMenu = 'inventory'">
+                        <i class="fa-solid fa-warehouse"></i> Inventory
+                    </a>
+                </li>
+                <li>
+                    <a :class="activeMenu === 'purchase' ? 'active bg-orange-500 text-white' : ''" 
+                       @click="activeMenu = 'purchase'">
+                        <i class="fa-solid fa-cart-shopping"></i> Purchase
+                    </a>
+                </li>
+            </ul>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 p-6">
+            <!-- Header Section -->
+            <div class="mb-6">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h1 class="text-3xl font-bold">Purchase Order</h1>
+                        <div class="text-sm breadcrumbs">
+                            <ul>
+                                <li><i class="fa-solid fa-house"></i> Home</li>
+                                <li><i class="fa-solid fa-cart-shopping"></i> Purchase Order</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="flex gap-3 items-center">
+                        <div class="form-control">
+                            <input type="text" placeholder="Search items, invoice..." class="input input-bordered w-64" 
+                                   x-model="searchQuery" @input="filterOrders()">
+                        </div>
+                        <button class="btn btn-primary bg-orange-500 border-none hover:bg-orange-600 text-white" 
+                                @click="openNewOrderModal()">
+                            <i class="fa-solid fa-plus"></i> Create Order
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tabs Navigation -->
+            <div class="flex gap-3 mb-6">
+                <button class="btn btn-sm" 
+                        :class="activeTab === 'all' ? 'bg-orange-500 text-white border-orange-500 hover:bg-orange-600' : 'btn-outline'" 
+                        @click="activeTab = 'all'; filterOrders()">
+                    <i class="fa-solid fa-list"></i> All
+                </button>
+                <button class="btn btn-sm" 
+                        :class="activeTab === 'pending' ? 'bg-orange-500 text-white border-orange-500 hover:bg-orange-600' : 'btn-outline'" 
+                        @click="activeTab = 'pending'; filterOrders()">
+                    <i class="fa-solid fa-clock"></i> Pending
+                </button>
+                <button class="btn btn-sm" 
+                        :class="activeTab === 'approved' ? 'bg-orange-500 text-white border-orange-500 hover:bg-orange-600' : 'btn-outline'" 
+                        @click="activeTab = 'approved'; filterOrders()">
+                    <i class="fa-solid fa-check-circle"></i> Approved
+                </button>
+                <button class="btn btn-sm" 
+                        :class="activeTab === 'delivered' ? 'bg-orange-500 text-white border-orange-500 hover:bg-orange-600' : 'btn-outline'" 
+                        @click="activeTab = 'delivered'; filterOrders()">
+                    <i class="fa-solid fa-truck"></i> Delivered
+                </button>
+            </div>
+
+            <!-- Filters Bar -->
+            <div class="bg-base-100 p-4 rounded-lg shadow mb-6">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text"><i class="fa-solid fa-receipt"></i> PO Number</span>
+                        </label>
+                        <input type="text" placeholder="Enter PO Number" class="input input-bordered input-sm" 
+                               x-model="filters.poNumber" @input="filterOrders()">
+                    </div>
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text"><i class="fa-solid fa-building"></i> Vendor</span>
+                        </label>
+                        <select class="select select-bordered select-sm" x-model="filters.vendor" @change="filterOrders()">
+                            <option value="">All Vendors</option>
+                            <option value="Fresh Produce">Fresh Produce</option>
+                            <option value="Meat Suppliers">Meat Suppliers</option>
+                            <option value="Dairy Products">Dairy Products</option>
+                            <option value="Beverage Inc">Beverage Inc</option>
+                        </select>
+                    </div>
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text"><i class="fa-solid fa-calendar-day"></i> Date From</span>
+                        </label>
+                        <input type="date" class="input input-bordered input-sm" x-model="filters.dateFrom" @change="filterOrders()">
+                    </div>
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text"><i class="fa-solid fa-calendar-day"></i> Date To</span>
+                        </label>
+                        <input type="date" class="input input-bordered input-sm" x-model="filters.dateTo" @change="filterOrders()">
+                    </div>
+                </div>
+                <div class="flex justify-end gap-2 mt-4">
+                    <button class="btn btn-sm btn-ghost" @click="resetFilters()">
+                        <i class="fa-solid fa-rotate-left"></i> Reset
+                    </button>
+                    <button class="btn btn-sm btn-primary bg-orange-500 border-none text-white hover:bg-orange-600">
+                        <i class="fa-solid fa-filter"></i> Apply Filters
+                    </button>
+                </div>
+            </div>
+
+            <!-- Orders Table -->
+            <div class="bg-base-100 rounded-lg shadow overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="table table-zebra">
+                        <thead class="bg-base-200">
+                            <tr>
+                                <th>
+                                    <input type="checkbox" class="checkbox checkbox-sm" 
+                                           @change="toggleSelectAll($event)">
+                                </th>
+                                <th><i class="fa-solid fa-hashtag"></i> PO Number</th>
+                                <th><i class="fa-solid fa-calendar"></i> Date Created</th>
+                                <th><i class="fa-solid fa-building"></i> Vendor</th>
+                                <th><i class="fa-solid fa-box"></i> Items</th>
+                                <th><i class="fa-solid fa-weight-hanging"></i> Qty</th>
+                                <th><i class="fa-solid fa-dollar-sign"></i> Price</th>
+                                <th><i class="fa-solid fa-chart-simple"></i> Progress</th>
+                                <th><i class="fa-solid fa-info-circle"></i> Status</th>
+                                <th><i class="fa-solid fa-ellipsis-vertical"></i> Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template x-for="order in filteredOrders" :key="order.id">
+                                <tr class="hover">
+                                    <td>
+                                        <input type="checkbox" class="checkbox checkbox-sm" 
+                                               :checked="order.selected" 
+                                               @change="order.selected = !order.selected">
+                                    </td>
+                                    <td>
+                                        <span class="font-semibold text-primary" x-text="order.poNumber"></span>
+                                        <br>
+                                        <span class="text-xs text-gray-500" x-text="order.dateRange"></span>
+                                    </td>
+                                    <td x-text="order.dateCreated"></td>
+                                    <td>
+                                        <span class="font-medium" x-text="order.vendor"></span>
+                                        <br>
+                                        <span class="text-xs text-gray-500" x-text="order.vendorCategory"></span>
+                                    </td>
+                                    <td x-text="order.items"></td>
+                                    <td x-text="order.qty"></td>
+                                    <td>
+                                        <span class="font-semibold" x-text="'$' + order.price"></span>
+                                    </td>
+                                    <td>
+                                        <div class="flex items-center gap-2">
+                                            <progress class="progress w-20" 
+                                                      :class="{
+                                                          'progress-error': order.progress < 40,
+                                                          'progress-warning': order.progress >= 40 && order.progress < 80,
+                                                          'progress-success': order.progress >= 80
+                                                      }" 
+                                                      :value="order.progress" 
+                                                      max="100"></progress>
+                                            <span class="text-xs" x-text="order.progress + '%'"></span>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="badge badge-sm" 
+                                              :class="{
+                                                  'badge-warning': order.status === 'Pending',
+                                                  'badge-info': order.status === 'Approved',
+                                                  'badge-success': order.status === 'Delivered',
+                                                  'badge-error': order.status === 'Cancelled'
+                                              }" 
+                                              x-text="order.status"></span>
+                                    </td>
+                                    <td>
+                                        <div class="dropdown dropdown-end">
+                                            <label tabindex="0" class="btn btn-ghost btn-xs">
+                                                <i class="fa-solid fa-ellipsis-vertical"></i>
+                                            </label>
+                                            <ul tabindex="0" class="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-52">
+                                                <li><a @click="viewOrder(order)"><i class="fa-solid fa-eye"></i> View</a></li>
+                                                <li><a @click="editOrder(order)"><i class="fa-solid fa-pen"></i> Edit</a></li>
+                                                <li><a @click="duplicateOrder(order)"><i class="fa-solid fa-copy"></i> Duplicate</a></li>
+                                                <li><a class="text-error" @click="deleteOrder(order)"><i class="fa-solid fa-trash"></i> Delete</a></li>
+                                            </ul>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Pagination -->
+                <div class="flex justify-between items-center p-4 border-t">
+                    <div class="text-sm text-gray-600">
+                        Showing <span x-text="filteredOrders.length"></span> of <span x-text="orders.length"></span> orders
+                    </div>
+                    <div class="join">
+                        <button class="join-item btn btn-sm">«</button>
+                        <button class="join-item btn btn-sm btn-active">1</button>
+                        <button class="join-item btn btn-sm">2</button>
+                        <button class="join-item btn btn-sm">»</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal for New Order -->
+    <dialog id="newOrderModal" class="modal" :class="{'modal-open': showNewOrderModal}" x-cloak>
+        <div class="modal-box max-w-2xl">
+            <h3 class="font-bold text-lg mb-4">
+                <i class="fa-solid fa-cart-plus text-orange-500"></i> Create New Purchase Order
+            </h3>
+            <form @submit.prevent="createNewOrder()">
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text">Vendor</span>
+                        </label>
+                        <select class="select select-bordered" required>
+                            <option value="">Select Vendor</option>
+                            <option>Fresh Produce</option>
+                            <option>Meat Suppliers</option>
+                            <option>Dairy Products</option>
+                        </select>
+                    </div>
+                    <div class="form-control">
+                        <label class="label">
+                            <span class="label-text">Order Date</span>
+                        </label>
+                        <input type="date" class="input input-bordered" required>
+                    </div>
+                    <div class="form-control col-span-2">
+                        <label class="label">
+                            <span class="label-text">Items</span>
+                        </label>
+                        <textarea class="textarea textarea-bordered" placeholder="Enter items..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-action">
+                    <button type="button" class="btn" @click="showNewOrderModal = false">Cancel</button>
+                    <button type="submit" class="btn btn-primary bg-orange-500 border-none text-white hover:bg-orange-600">
+                        <i class="fa-solid fa-save"></i> Create Order
+                    </button>
+                </div>
+            </form>
+        </div>
+        <form method="dialog" class="modal-backdrop">
+            <button @click="showNewOrderModal = false">close</button>
+        </form>
+    </dialog>
+
+    <script>
+        function purchaseOrderApp() {
+            return {
+                activeMenu: 'purchase',
+                activeTab: 'all',
+                searchQuery: '',
+                showNewOrderModal: false,
+                filters: {
+                    poNumber: '',
+                    vendor: '',
+                    dateFrom: '',
+                    dateTo: ''
+                },
+                orders: [
+                    {
+                        id: 1,
+                        poNumber: 'PO001',
+                        dateRange: 'Oct 11, 2025',
+                        dateCreated: '2025-10-11',
+                        vendor: 'Fresh Produce',
+                        vendorCategory: 'Fresh Vegetables',
+                        items: 'Onion Fresh Supplies',
+                        qty: 20,
+                        price: 175.00,
+                        progress: 30,
+                        status: 'Pending',
+                        selected: false
+                    },
+                    {
+                        id: 2,
+                        poNumber: 'PO002',
+                        dateRange: 'Oct 12, 2025',
+                        dateCreated: '2025-10-12',
+                        vendor: 'Meat Suppliers',
+                        vendorCategory: 'Frozen Meat',
+                        items: 'Chicken Parts',
+                        qty: 50,
+                        price: 325.00,
+                        progress: 50,
+                        status: 'Approved',
+                        selected: false
+                    },
+                    {
+                        id: 3,
+                        poNumber: 'PO003',
+                        dateRange: 'Oct 13, 2025',
+                        dateCreated: '2025-10-13',
+                        vendor: 'Fresh Produce',
+                        vendorCategory: 'Food Preparation',
+                        items: 'Fresh Tomatoes',
+                        qty: 15,
+                        price: 225.00,
+                        progress: 75,
+                        status: 'Approved',
+                        selected: false
+                    },
+                    {
+                        id: 4,
+                        poNumber: 'PO004',
+                        dateRange: 'Oct 14, 2025',
+                        dateCreated: '2025-10-14',
+                        vendor: 'Dairy Products',
+                        vendorCategory: 'Equipment Maintenance',
+                        items: 'Oil Cooking',
+                        qty: 30,
+                        price: 180.00,
+                        progress: 40,
+                        status: 'Pending',
+                        selected: false
+                    },
+                    {
+                        id: 5,
+                        poNumber: 'PO005',
+                        dateRange: 'Oct 15, 2025',
+                        dateCreated: '2025-10-15',
+                        vendor: 'Meat Suppliers',
+                        vendorCategory: 'Expresso Machine',
+                        items: 'White Plates',
+                        qty: 100,
+                        price: 450.00,
+                        progress: 20,
+                        status: 'Pending',
+                        selected: false
+                    },
+                    {
+                        id: 6,
+                        poNumber: 'PO006',
+                        dateRange: 'Oct 16, 2025',
+                        dateCreated: '2025-10-16',
+                        vendor: 'Beverage Inc',
+                        vendorCategory: 'Plates, Glasses',
+                        items: 'Plates, Glasses',
+                        qty: 200,
+                        price: 890.00,
+                        progress: 90,
+                        status: 'Delivered',
+                        selected: false
+                    },
+                    {
+                        id: 7,
+                        poNumber: 'PO007',
+                        dateRange: 'Oct 17, 2025',
+                        dateCreated: '2025-10-17',
+                        vendor: 'Fresh Produce',
+                        vendorCategory: 'Branded Equipment Inc.',
+                        items: 'Fresh Cabbage',
+                        qty: 25,
+                        price: 190.00,
+                        progress: 65,
+                        status: 'Approved',
+                        selected: false
+                    },
+                    {
+                        id: 8,
+                        poNumber: 'PO008',
+                        dateRange: 'Oct 18, 2025',
+                        dateCreated: '2025-10-18',
+                        vendor: 'Dairy Products',
+                        vendorCategory: 'Kitchen Supplies',
+                        items: 'Knives Bowls',
+                        qty: 80,
+                        price: 420.00,
+                        progress: 85,
+                        status: 'Delivered',
+                        selected: false
+                    },
+                    {
+                        id: 9,
+                        poNumber: 'PO009',
+                        dateRange: 'Oct 19, 2025',
+                        dateCreated: '2025-10-19',
+                        vendor: 'Meat Suppliers',
+                        vendorCategory: 'Butter',
+                        items: 'Butter',
+                        qty: 60,
+                        price: 350.00,
+                        progress: 55,
+                        status: 'Approved',
+                        selected: false
+                    },
+                    {
+                        id: 10,
+                        poNumber: 'PO010',
+                        dateRange: 'Oct 20, 2025',
+                        dateCreated: '2025-10-20',
+                        vendor: 'Fresh Produce',
+                        vendorCategory: 'Green Cleaning Solutions',
+                        items: 'Fresh Onions',
+                        qty: 35,
+                        price: 210.00,
+                        progress: 45,
+                        status: 'Pending',
+                        selected: false
+                    },
+                    {
+                        id: 11,
+                        poNumber: 'PO011',
+                        dateRange: 'Oct 21, 2025',
+                        dateCreated: '2025-10-21',
+                        vendor: 'Beverage Inc',
+                        vendorCategory: 'Kitchen Jubilees Inc.',
+                        items: 'Kitchen Essentials',
+                        qty: 150,
+                        price: 680.00,
+                        progress: 95,
+                        status: 'Delivered',
+                        selected: false
+                    },
+                    {
+                        id: 12,
+                        poNumber: 'PO012',
+                        dateRange: 'Oct 22, 2025',
+                        dateCreated: '2025-10-22',
+                        vendor: 'Dairy Products',
+                        vendorCategory: 'Organic Farms',
+                        items: 'Organic Milk',
+                        qty: 40,
+                        price: 240.00,
+                        progress: 70,
+                        status: 'Approved',
+                        selected: false
+                    }
+                ],
+                filteredOrders: [],
+                
+                init() {
+                    this.filteredOrders = this.orders;
+                },
+                
+                filterOrders() {
+                    let filtered = this.orders;
+                    
+                    // Filter by tab
+                    if (this.activeTab !== 'all') {
+                        const statusMap = {
+                            'pending': 'Pending',
+                            'approved': 'Approved',
+                            'delivered': 'Delivered'
+                        };
+                        filtered = filtered.filter(order => order.status === statusMap[this.activeTab]);
+                    }
+                    
+                    // Filter by search
+                    if (this.searchQuery) {
+                        const query = this.searchQuery.toLowerCase();
+                        filtered = filtered.filter(order => 
+                            order.poNumber.toLowerCase().includes(query) ||
+                            order.vendor.toLowerCase().includes(query) ||
+                            order.items.toLowerCase().includes(query)
+                        );
+                    }
+                    
+                    // Filter by PO Number
+                    if (this.filters.poNumber) {
+                        filtered = filtered.filter(order => 
+                            order.poNumber.toLowerCase().includes(this.filters.poNumber.toLowerCase())
+                        );
+                    }
+                    
+                    // Filter by Vendor
+                    if (this.filters.vendor) {
+                        filtered = filtered.filter(order => order.vendor === this.filters.vendor);
+                    }
+                    
+                    this.filteredOrders = filtered;
+                },
+                
+                resetFilters() {
+                    this.filters = {
+                        poNumber: '',
+                        vendor: '',
+                        dateFrom: '',
+                        dateTo: ''
+                    };
+                    this.searchQuery = '';
+                    this.activeTab = 'all';
+                    this.filterOrders();
+                },
+                
+                toggleSelectAll(event) {
+                    const checked = event.target.checked;
+                    this.filteredOrders.forEach(order => order.selected = checked);
+                },
+                
+                openNewOrderModal() {
+                    this.showNewOrderModal = true;
+                },
+                
+                createNewOrder() {
+                    alert('New order created successfully!');
+                    this.showNewOrderModal = false;
+                },
+                
+                viewOrder(order) {
+                    alert('Viewing order: ' + order.poNumber);
+                },
+                
+                editOrder(order) {
+                    alert('Editing order: ' + order.poNumber);
+                },
+                
+                duplicateOrder(order) {
+                    alert('Duplicating order: ' + order.poNumber);
+                },
+                
+                deleteOrder(order) {
+                    if (confirm('Are you sure you want to delete ' + order.poNumber + '?')) {
+                        this.orders = this.orders.filter(o => o.id !== order.id);
+                        this.filterOrders();
+                    }
+                }
+            }
+        }
+    </script>
+</body>
+</html>
