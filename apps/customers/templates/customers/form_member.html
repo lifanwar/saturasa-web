@@ -129,13 +129,24 @@
 
                 <!-- Submit Buttons -->
                 <div class="flex gap-3 flex-col sm:flex-row">
+                    {% if from_checkout %}
+                    <!-- Dari checkout redirect -->
+                    <a href="{% url 'menu:menu_list' %}" class="btn btn-ghost flex-1">
+                        <i class="fas fa-arrow-left mr-2"></i>Kembali ke Menu
+                    </a>
+                    {% else %}
+                    <!-- Normal flow -->
                     <a href="{% url 'menu:menu_list' %}" class="btn btn-ghost flex-1">
                         <i class="fas fa-arrow-left mr-2"></i>Kembali
                     </a>
+                    {% endif %}
+                    
                     <button type="submit" class="btn btn-primary flex-1">
                         <i class="fas fa-check-circle mr-2"></i>Daftar Sebagai Member
                     </button>
                 </div>
+                
+
             </form>
         </div>
     </div>

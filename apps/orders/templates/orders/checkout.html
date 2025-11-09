@@ -65,15 +65,50 @@
         <div class="card bg-base-100 shadow-xl">
             <div class="card-body">
                 <h2 class="card-title mb-4">👤 Data Customer</h2>
+
+                {% if request.user.is_authenticated %}
+                <!-- Show info untuk user yang sudah login (member atau belum) -->
+                <div class="alert alert-success mb-6">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <div>
+                        {% if request.user.customer %}
+                        <!-- Member -->
+                        <h3 class="font-bold">Selamat datang, {{ request.user.customer.name }}!</h3>
+                        <div class="text-sm">
+                            <p>Phone: {{ request.user.customer.phone_number }}</p>
+                            <p>Email: {{ request.user.email }}</p>
+                        </div>
+                        {% else %}
+                        <!-- Logged in tapi belum member -->
+                        <h3 class="font-bold">Selamat datang, {{ request.user.email }}!</h3>
+                        <div class="text-sm">
+                            <p>Anda login sebagai: {{ request.user.get_full_name|default:request.user.email }}</p>
+                            <p class="text-warning">
+                                <i class="fas fa-info-circle"></i> 
+                                Anda belum terdaftar sebagai member
+                            </p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+
                 
                 <form method="POST" action="{% url 'orders:checkout_confirm' %}">
                     {% csrf_token %}
                     <input type="hidden" name="cart_data" value="{{ cart_data_json }}">
                     
                     <!-- Nama Customer -->
+                    {% if not request.user.is_authenticated %}
+                    <!-- HANYA GUEST (not logged in): Input nama manual -->
                     <div class="form-control mb-4">
                         <label class="label">
-                            <span class="label-text font-bold">Nama Anda *</span>
+                            <span class="label-text font-bold">
+                                <i class="fas fa-user mr-1"></i>Nama Anda
+                                <span class="text-error">*</span>
+                            </span>
                         </label>
                         <input 
                             type="text" 
@@ -81,11 +116,14 @@
                             placeholder="Masukkan nama Anda" 
                             class="input input-bordered w-full" 
                             required
-                            maxlength="200">
+                            maxlength="200"
+                        >
                         <label class="label">
                             <span class="label-text-alt text-base-content/60">Nama untuk identifikasi pesanan</span>
                         </label>
                     </div>
+                    {% endif %}
+
                     
                     <!-- Order Type -->
                     <div class="form-control mb-6">
@@ -125,6 +163,40 @@
                         </button>
                     </div>
                 </form>
+
+                {% if not request.user.is_authenticated %}
+                <!-- Sidebar: Login/Register Options (Only for Guest) -->
+                <div class="mt-6 card bg-base-100 shadow-xl">
+                    <div class="card-body">
+                        <h3 class="card-title text-lg">
+                            <i class="fas fa-user-circle mr-2"></i>Sudah punya akun?
+                        </h3>
+                        <p class="text-sm text-base-content/70 mb-4">
+                            Login untuk checkout lebih cepat
+                        </p>
+
+                        <a href="/accounts/google/login/?next=/orders/checkout/" class="btn btn-outline btn-block gap-2 mb-3">
+                            <i class="fab fa-google"></i> Login dengan Google
+                        </a>
+
+                        <div class="divider text-xs">ATAU</div>
+
+                        <a href="{% url 'customers:register_member' %}" class="btn btn-secondary btn-block">
+                            <i class="fas fa-user-plus"></i> Daftar Member
+                        </a>
+
+                        <div class="mt-4 p-3 bg-base-200 rounded-lg">
+                            <p class="text-xs font-semibold mb-2">Keuntungan Member:</p>
+                            <ul class="text-xs space-y-1">
+                                <li><i class="fas fa-check text-success mr-1"></i>Checkout cepat</li>
+                                <li><i class="fas fa-check text-success mr-1"></i>Riwayat pesanan</li>
+                                <li><i class="fas fa-check text-success mr-1"></i>Promo eksklusif</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
             </div>
         </div>
 

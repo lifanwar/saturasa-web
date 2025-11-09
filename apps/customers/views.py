@@ -59,6 +59,11 @@ def register_member(request):
                 request, 
                 f'Selamat {customer.name}! Anda sekarang terdaftar sebagai member.'
             )
+
+            if request.session.get('checkout_redirect'):
+                del request.session['checkout_redirect']
+                return redirect('orders:checkout')
+            
             return redirect('customers:dashboard')
     else:
         # Pre-fill name from Google account
@@ -70,5 +75,6 @@ def register_member(request):
     context = {
         'form': form,
         'user': request.user,
+        'from_checkout': request.session.get('checkout_redirect', False),
     }
     return render(request, 'customers/form_member.html', context)

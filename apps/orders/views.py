@@ -18,6 +18,21 @@ def checkout_view(request):
                 messages.error(request, 'Cart kosong!')
                 return redirect('menu:menu_list')
             
+            # Save cart to session
+            request.session['checkout_cart'] = cart_data
+            
+            # Case 1: User authenticated + has Customer profile (MEMBER)
+            if request.user.is_authenticated and hasattr(request.user, 'customer'):
+                # Member checkout - proceed
+                pass  # Lanjutkan ke existing code
+            
+            # Case 2: User authenticated but NO Customer profile (BLOCKING REDIRECT)
+            elif request.user.is_authenticated and not hasattr(request.user, 'customer'):
+                request.session['checkout_redirect'] = True
+                messages.warning(request, 
+                    'Anda harus mendaftar sebagai member untuk melanjutkan checkout.')
+                return redirect('customers:register_member')
+            
             # Validate & build cart items
             cart_items = []
             total = 0
@@ -95,7 +110,35 @@ def checkout_confirm(request):
             with transaction.atomic():
                 customer_name = request.POST.get('customer_name', '').strip()
                 order_type = request.POST.get('order_type')
-                cart_data = json.loads(request.POST.get('cart_data', '[]'))
+
+                cart_data_raw = request.POST.get('cart_data', '[]')
+                # Cek apakah dari session atau POST
+                if cart_data_raw == '[]' and 'checkout_cart' in request.session:
+                    cart_data = request.session.get('checkout_cart')
+                else:
+                    cart_data = json.loads(cart_data_raw)
+                
+                # Check if user is member - override customer_name
+                customer = None
+                
+                # Case 1: User logged in (member or not member)
+                if request.user.is_authenticated:
+                    # Use authenticated user's name/email
+                    if hasattr(request.user, 'customer'):
+                        # User is member - use Customer name
+                        customer = request.user.customer
+                        customer_name = customer.name
+                    else:
+                        # User logged in but not member yet - use email/username
+                        customer_name = request.user.get_full_name() or request.user.email.split('@')[0]
+                
+                # Case 2: Guest (not logged in) - use input from form
+                # customer_name already from POST.get above
+                
+                # Validation
+                if not customer_name:
+                    messages.error(request, 'Nama wajib diisi!')
+                    return redirect('menu:menu_list')
                 
                 # Validation
                 if not customer_name:
@@ -113,7 +156,7 @@ def checkout_confirm(request):
                 # Create Order (PENDING - no stock action)
                 order = Order.objects.create(
                     order_number=generate_order_number(),
-                    customer=None,
+                    customer=customer, 
                     offline_customer_name=customer_name,
                     order_type=order_type,
                     order_channel='OFFLINE',

@@ -178,7 +178,8 @@ ACCOUNT_SIGNUP_FIELDS = [
 ]
 
 # User model configuration
-ACCOUNT_USER_MODEL_USERNAME_FIELD = None  # No username field
+ACCOUNT_USER_MODEL_USERNAME_FIELD = 'username'# No username field
+ACCOUNT_USERNAME_REQUIRED = False 
 ACCOUNT_USER_MODEL_EMAIL_FIELD = 'email'  # Email field name
 
 # ===== Email Configuration =====
