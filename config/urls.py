@@ -5,8 +5,13 @@ from django.conf.urls.static import static
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    # Allauth
+    path('accounts/', include('allauth.urls')),
+
+    # apps
     path('menu/', include('apps.menu.urls')),  
     path('orders/', include('apps.orders.urls')),
+    path('customers/', include('apps.customers.urls')),
 ]
 
 if settings.DEBUG:

@@ -1,0 +1,46 @@
+<!-- templates/account/login.html -->
+
+{% extends 'base.html' %}
+{% load static %}
+{% load socialaccount %}
+
+{% block title %}Login - Restaurant App{% endblock %}
+
+{% block content %}
+<div class="max-w-md mx-auto py-12">
+    
+    <div class="text-center mb-8">
+        <i class="fas fa-sign-in-alt text-6xl text-primary mb-4"></i>
+        <h1 class="text-4xl font-bold mb-2">Login</h1>
+        <p class="text-base-content/70">Gunakan akun Google Anda untuk login</p>
+    </div>
+
+    <div class="card bg-base-100 shadow-xl">
+        <div class="card-body">
+            <!-- Google Login Button -->
+            <a href="{% provider_login_url 'google' %}" class="btn btn-primary btn-lg w-full gap-2">
+                <i class="fab fa-google text-2xl"></i>
+                <span>Login dengan Google</span>
+            </a>
+            
+            <div class="divider">ATAU</div>
+            
+            <!-- Guest Checkout -->
+            <a href="{% url 'menu:menu_list' %}" class="btn btn-ghost btn-lg w-full">
+                <i class="fas fa-shopping-cart mr-2"></i>
+                Lanjut sebagai Guest
+            </a>
+            
+            <div class="alert alert-info mt-4">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                <div class="text-sm">
+                    <strong>Member Benefits:</strong> Checkout lebih cepat, akses riwayat pesanan, dan dapatkan promo eksklusif!
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

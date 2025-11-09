@@ -1,0 +1,272 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Dashboard Member - Restaurant App{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto py-8">
+    
+    <!-- Welcome Header -->
+    <div class="mb-8">
+        <div class="flex items-center justify-between flex-wrap gap-4">
+            <div>
+                <h1 class="text-4xl font-bold mb-2">
+                    <i class="fas fa-tachometer-alt mr-2 text-primary"></i>Dashboard Member
+                </h1>
+                <p class="text-base-content/70">Selamat datang, <strong>{{ customer.name }}</strong>!</p>
+            </div>
+            <div class="flex gap-2">
+                <a href="{% url 'menu:menu_list' %}" class="btn btn-primary">
+                    <i class="fas fa-utensils mr-2"></i>Pesan Menu
+                </a>
+                <a href="{% url 'account_logout' %}" class="btn btn-ghost">
+                    <i class="fas fa-sign-out-alt mr-2"></i>Logout
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Member Info Card -->
+    <div class="card bg-gradient-to-r from-primary to-secondary text-primary-content shadow-2xl mb-8">
+        <div class="card-body">
+            <div class="flex items-center gap-4 flex-wrap">
+                <div class="avatar placeholder">
+                    <div class="bg-primary-content text-primary rounded-full w-20 h-20">
+                        <span class="text-3xl font-bold">{{ customer.name|slice:":1"|upper }}</span>
+                    </div>
+                </div>
+                <div class="flex-1">
+                    <h2 class="text-2xl font-bold mb-1">{{ customer.name }}</h2>
+                    <div class="flex gap-4 flex-wrap text-sm opacity-90">
+                        <div>
+                            <i class="fas fa-envelope mr-1"></i>{{ customer.user.email }}
+                        </div>
+                        <div>
+                            <i class="fas fa-phone mr-1"></i>{{ customer.phone_number }}
+                        </div>
+                        <div>
+                            <i class="fas fa-birthday-cake mr-1"></i>{{ customer.date_of_birth|date:"d F Y" }}
+                        </div>
+                    </div>
+                </div>
+                <div class="text-right">
+                    <div class="badge badge-lg badge-accent gap-2">
+                        <i class="fas fa-crown"></i>
+                        MEMBER
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Member Stats -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <!-- Total Orders -->
+        <div class="card bg-base-100 shadow-xl">
+            <div class="card-body">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-base-content/60 text-sm mb-1">Total Pesanan</p>
+                        <p class="text-3xl font-bold">{{ orders.count }}</p>
+                    </div>
+                    <div class="text-5xl text-primary opacity-20">
+                        <i class="fas fa-shopping-bag"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Member Since -->
+        <div class="card bg-base-100 shadow-xl">
+            <div class="card-body">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-base-content/60 text-sm mb-1">Member Sejak</p>
+                        <p class="text-xl font-bold">{{ customer.created_at|date:"d M Y" }}</p>
+                        <p class="text-xs text-base-content/60 mt-1">
+                            {{ customer.created_at|timesince }} yang lalu
+                        </p>
+                    </div>
+                    <div class="text-5xl text-success opacity-20">
+                        <i class="fas fa-calendar-check"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Points (Future Feature) -->
+        <div class="card bg-base-100 shadow-xl">
+            <div class="card-body">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-base-content/60 text-sm mb-1">Poin Anda</p>
+                        <p class="text-3xl font-bold">0</p>
+                        <p class="text-xs text-base-content/60 mt-1">Segera hadir</p>
+                    </div>
+                    <div class="text-5xl text-warning opacity-20">
+                        <i class="fas fa-star"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Profile Detail Section -->
+    <div class="card bg-base-100 shadow-xl mb-8">
+        <div class="card-body">
+            <h2 class="card-title mb-4">
+                <i class="fas fa-user-circle mr-2"></i>Informasi Profil
+            </h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Left Column -->
+                <div class="space-y-4">
+                    <div class="flex items-start gap-3 p-4 bg-base-200 rounded-lg">
+                        <div class="text-primary text-2xl mt-1">
+                            <i class="fas fa-user"></i>
+                        </div>
+                        <div class="flex-1">
+                            <p class="text-xs text-base-content/60 mb-1">Nama Lengkap</p>
+                            <p class="font-semibold text-lg">{{ customer.name }}</p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-start gap-3 p-4 bg-base-200 rounded-lg">
+                        <div class="text-primary text-2xl mt-1">
+                            <i class="fas fa-envelope"></i>
+                        </div>
+                        <div class="flex-1">
+                            <p class="text-xs text-base-content/60 mb-1">Email</p>
+                            <p class="font-semibold">{{ customer.user.email }}</p>
+                            <div class="badge badge-success badge-sm gap-1 mt-2">
+                                <i class="fas fa-check-circle"></i>
+                                Terverifikasi
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Column -->
+                <div class="space-y-4">
+                    <div class="flex items-start gap-3 p-4 bg-base-200 rounded-lg">
+                        <div class="text-primary text-2xl mt-1">
+                            <i class="fas fa-phone"></i>
+                        </div>
+                        <div class="flex-1">
+                            <p class="text-xs text-base-content/60 mb-1">Nomor Telepon</p>
+                            <p class="font-semibold text-lg">{{ customer.phone_number }}</p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-start gap-3 p-4 bg-base-200 rounded-lg">
+                        <div class="text-primary text-2xl mt-1">
+                            <i class="fas fa-birthday-cake"></i>
+                        </div>
+                        <div class="flex-1">
+                            <p class="text-xs text-base-content/60 mb-1">Tanggal Lahir</p>
+                            <p class="font-semibold text-lg">{{ customer.date_of_birth|date:"d F Y" }}</p>
+                            <p class="text-sm text-base-content/60 mt-1">
+                                Usia: {{ customer_age }} tahun
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="divider"></div>
+
+            <!-- Account Created Info -->
+            <div class="flex items-center justify-between p-4 bg-primary/5 rounded-lg">
+                <div class="flex items-center gap-3">
+                    <i class="fas fa-info-circle text-primary text-xl"></i>
+                    <div>
+                        <p class="font-semibold">Status Akun</p>
+                        <p class="text-sm text-base-content/60">
+                            Terdaftar sejak {{ customer.created_at|date:"d F Y, H:i" }} WIB
+                        </p>
+                    </div>
+                </div>
+                <div class="text-right">
+                    <div class="badge badge-primary gap-2">
+                        <i class="fas fa-check-double"></i>
+                        AKTIF
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Orders Section -->
+    <div class="card bg-base-100 shadow-xl">
+        <div class="card-body">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="card-title">
+                    <i class="fas fa-history mr-2"></i>Riwayat Pesanan
+                </h2>
+                {% if orders %}
+                    <span class="badge badge-primary">{{ orders.count }} pesanan</span>
+                {% endif %}
+            </div>
+
+            {% if orders %}
+                <div class="overflow-x-auto">
+                    <table class="table table-zebra">
+                        <thead class="bg-base-200">
+                            <tr>
+                                <th><i class="fas fa-hashtag mr-1"></i>Order ID</th>
+                                <th><i class="fas fa-calendar mr-1"></i>Tanggal</th>
+                                <th><i class="fas fa-list mr-1"></i>Items</th>
+                                <th><i class="fas fa-money-bill mr-1"></i>Total</th>
+                                <th><i class="fas fa-info-circle mr-1"></i>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for order in orders %}
+                            <tr class="hover">
+                                <td>
+                                    <span class="font-mono font-semibold text-primary">
+                                        {{ order.order_number }}
+                                    </span>
+                                </td>
+                                <td>{{ order.created_at|date:"d M Y, H:i" }}</td>
+                                <td>{{ order.items.count }} item(s)</td>
+                                <td>
+                                    <span class="font-semibold">
+                                        {% if order.total.currency == 'IDR' %}
+                                            Rp {{ order.total.amount|floatformat:0 }}
+                                        {% else %}
+                                            {{ order.total.currency }} {{ order.total.amount|floatformat:2 }}
+                                        {% endif %}
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="badge badge-sm 
+                                        {% if order.status == 'PENDING' %}badge-warning
+                                        {% elif order.status == 'CONFIRMED' %}badge-info
+                                        {% elif order.status == 'PREPARING' %}badge-primary
+                                        {% elif order.status == 'READY' %}badge-accent
+                                        {% elif order.status == 'COMPLETED' %}badge-success
+                                        {% elif order.status == 'CANCELLED' %}badge-error
+                                        {% endif %}">
+                                        {{ order.get_status_display }}
+                                    </span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="text-center py-12">
+                    <i class="fas fa-shopping-cart text-6xl text-base-content/20 mb-4"></i>
+                    <p class="text-lg text-base-content/60 mb-4">Belum ada riwayat pesanan</p>
+                    <a href="{% url 'menu:menu_list' %}" class="btn btn-primary">
+                        <i class="fas fa-utensils mr-2"></i>Mulai Pesan Sekarang
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+</div>
+{% endblock %}

@@ -1,3 +1,5 @@
+<!-- templates/includes/navbar.html -->
+
 <header>
     <nav class="navbar bg-base-100 shadow-lg" aria-label="Main navigation">
         <div class="flex-1">
@@ -6,11 +8,44 @@
                 <span>Restaurant App</span>
             </a>
         </div>
-        <div class="flex-none">
+        
+        <div class="flex-none gap-2">
             <ul class="menu menu-horizontal px-1">
-                <li><a href="/menu/">Menu</a></li>
-                <li><a href="/orders/">Orders</a></li>
-                <li><a href="/customers/">Customers</a></li>
+                <li><a href="{% url 'menu:menu_list' %}">Menu</a></li>
+                
+                {% if user.is_authenticated %}
+                    <!-- User sudah login -->
+                    <li>
+                        <details>
+                            <summary>
+                                <i class="fas fa-user-circle"></i>
+                                {{ user.email|truncatechars:20 }}
+                            </summary>
+                            <ul class="p-2 bg-base-100 rounded-t-none z-50">
+                                <li>
+                                    <a href="{% url 'customers:dashboard' %}">
+                                        <i class="fas fa-tachometer-alt"></i>
+                                        Dashboard
+                                    </a>
+                                </li>
+                                <li>
+                                    <a href="{% url 'account_logout' %}">
+                                        <i class="fas fa-sign-out-alt"></i>
+                                        Logout
+                                    </a>
+                                </li>
+                            </ul>
+                        </details>
+                    </li>
+                {% else %}
+                    <!-- User belum login -->
+                    <li>
+                        <a href="{% url 'account_login' %}" class="btn btn-primary btn-sm">
+                            <i class="fab fa-google"></i>
+                            Login
+                        </a>
+                    </li>
+                {% endif %}
             </ul>
             
             {% include 'includes/theme_toggle.html' %}

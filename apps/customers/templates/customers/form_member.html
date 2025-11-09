@@ -1,0 +1,154 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Daftar Member - Restaurant App{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto py-8">
+    
+    <!-- Hero Section -->
+    <div class="text-center mb-8">
+        <div class="mb-4">
+            <i class="fas fa-user-plus text-6xl text-primary"></i>
+        </div>
+        <h1 class="text-4xl font-bold mb-2">Daftar Sebagai Member</h1>
+        <p class="text-base-content/70 text-lg">
+            Lengkapi data Anda untuk menjadi member dan nikmati berbagai keuntungan
+        </p>
+    </div>
+
+    <!-- Benefits Card -->
+    <div class="card bg-gradient-to-r from-primary/10 to-secondary/10 shadow-lg mb-6">
+        <div class="card-body">
+            <h3 class="font-bold text-lg mb-3">
+                <i class="fas fa-gift mr-2 text-primary"></i>Keuntungan Member
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div class="flex items-start gap-2">
+                    <i class="fas fa-check-circle text-success mt-1"></i>
+                    <span class="text-sm">Checkout lebih cepat tanpa input ulang</span>
+                </div>
+                <div class="flex items-start gap-2">
+                    <i class="fas fa-check-circle text-success mt-1"></i>
+                    <span class="text-sm">Akses riwayat pesanan Anda</span>
+                </div>
+                <div class="flex items-start gap-2">
+                    <i class="fas fa-check-circle text-success mt-1"></i>
+                    <span class="text-sm">Dapatkan poin setiap pembelian</span>
+                </div>
+                <div class="flex items-start gap-2">
+                    <i class="fas fa-check-circle text-success mt-1"></i>
+                    <span class="text-sm">Promo eksklusif untuk member</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Google Account Info -->
+    <div class="alert alert-info mb-6 shadow-lg">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-current shrink-0 w-6 h-6">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+        </svg>
+        <div>
+            <h3 class="font-bold">Login dengan Google</h3>
+            <div class="text-sm">Anda login sebagai: <strong>{{ user.email }}</strong></div>
+        </div>
+    </div>
+
+    <!-- Registration Form -->
+    <div class="card bg-base-100 shadow-xl">
+        <div class="card-body">
+            <h2 class="card-title mb-4">
+                <i class="fas fa-clipboard-list mr-2"></i>Data Member
+            </h2>
+            
+            <form method="POST">
+                {% csrf_token %}
+                
+                <!-- Nama Lengkap -->
+                <div class="form-control mb-4">
+                    <label class="label">
+                        <span class="label-text font-bold">
+                            <i class="fas fa-user mr-1"></i>Nama Lengkap
+                            <span class="text-error">*</span>
+                        </span>
+                    </label>
+                    {{ form.name }}
+                    {% if form.name.errors %}
+                        <label class="label">
+                            <span class="label-text-alt text-error">{{ form.name.errors.0 }}</span>
+                        </label>
+                    {% else %}
+                        <label class="label">
+                            <span class="label-text-alt text-base-content/60">Nama lengkap sesuai identitas</span>
+                        </label>
+                    {% endif %}
+                </div>
+
+                <!-- Nomor Telepon -->
+                <div class="form-control mb-4">
+                    <label class="label">
+                        <span class="label-text font-bold">
+                            <i class="fas fa-phone mr-1"></i>Nomor Telepon
+                            <span class="text-error">*</span>
+                        </span>
+                    </label>
+                    {{ form.phone_number }}
+                    {% if form.phone_number.errors %}
+                        <label class="label">
+                            <span class="label-text-alt text-error">{{ form.phone_number.errors.0 }}</span>
+                        </label>
+                    {% else %}
+                        <label class="label">
+                            <span class="label-text-alt text-base-content/60">Format: 08123456789 (angka saja)</span>
+                        </label>
+                    {% endif %}
+                </div>
+
+                <!-- Tanggal Lahir -->
+                <div class="form-control mb-6">
+                    <label class="label">
+                        <span class="label-text font-bold">
+                            <i class="fas fa-birthday-cake mr-1"></i>Tanggal Lahir
+                            <span class="text-error">*</span>
+                        </span>
+                    </label>
+                    {{ form.date_of_birth }}
+                    {% if form.date_of_birth.errors %}
+                        <label class="label">
+                            <span class="label-text-alt text-error">{{ form.date_of_birth.errors.0 }}</span>
+                        </label>
+                    {% else %}
+                        <label class="label">
+                            <span class="label-text-alt text-base-content/60">Untuk promo ulang tahun spesial</span>
+                        </label>
+                    {% endif %}
+                </div>
+
+                <div class="divider"></div>
+
+                <!-- Submit Buttons -->
+                <div class="flex gap-3 flex-col sm:flex-row">
+                    <a href="{% url 'menu:menu_list' %}" class="btn btn-ghost flex-1">
+                        <i class="fas fa-arrow-left mr-2"></i>Kembali
+                    </a>
+                    <button type="submit" class="btn btn-primary flex-1">
+                        <i class="fas fa-check-circle mr-2"></i>Daftar Sebagai Member
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Note -->
+    <div class="alert mt-6">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-info shrink-0 w-6 h-6">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+        </svg>
+        <div class="text-sm">
+            <strong>Privasi Anda Terjaga:</strong> Data yang Anda berikan hanya digunakan untuk keperluan membership dan tidak akan dibagikan kepada pihak ketiga.
+        </div>
+    </div>
+
+</div>
+{% endblock %}

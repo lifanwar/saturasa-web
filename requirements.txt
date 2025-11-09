@@ -1,3 +1,7 @@
 django
 pillow
 python-dotenv
+django-allauth
+requests
+PyJWT
+cryptography

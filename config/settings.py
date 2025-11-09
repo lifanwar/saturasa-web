@@ -40,6 +40,15 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
 
+    # Required for allauth
+    'django.contrib.sites',  
+    
+    # Allauth apps
+    'allauth',  
+    'allauth.account',  
+    'allauth.socialaccount',  
+    'allauth.socialaccount.providers.google',  
+
      # Local apps
     'apps.core.apps.CoreConfig',
     'apps.customers.apps.CustomersConfig',
@@ -55,6 +64,9 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+
+    # Allauth middleware
+    'allauth.account.middleware.AccountMiddleware',
 ]
 
 ROOT_URLCONF = 'config.urls'
@@ -138,3 +150,94 @@ MEDIA_ROOT = BASE_DIR / 'media'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# ============================================
+# DJANGO ALLAUTH CONFIGURATION (Updated for v65+)
+# ============================================
+
+# Required for allauth
+SITE_ID = 1
+
+# Authentication backends
+AUTHENTICATION_BACKENDS = [
+    'django.contrib.auth.backends.ModelBackend',  # Default
+    'allauth.account.auth_backends.AuthenticationBackend',  # Allauth
+]
+
+# ===== NEW FORMAT (v65+) =====
+
+# Login methods - email only (no username)
+ACCOUNT_LOGIN_METHODS = {'email'}
+
+# Signup fields - email and password required
+# Format: 'field*' means required, 'field' means optional
+ACCOUNT_SIGNUP_FIELDS = [
+    'email*',      # Email required
+    'password1*',  # Password required
+    'password2*',  # Confirm password required
+]
+
+# User model configuration
+ACCOUNT_USER_MODEL_USERNAME_FIELD = None  # No username field
+ACCOUNT_USER_MODEL_EMAIL_FIELD = 'email'  # Email field name
+
+# ===== Email Configuration =====
+
+# Email verification - optional because Google already verified
+ACCOUNT_EMAIL_VERIFICATION = 'optional'
+
+# Email uniqueness
+ACCOUNT_UNIQUE_EMAIL = True
+
+# ===== Login/Logout Redirects =====
+
+# Redirect URLs
+LOGIN_REDIRECT_URL = '/customers/dashboard/'
+ACCOUNT_LOGOUT_REDIRECT_URL = '/'
+LOGIN_URL = '/accounts/google/login/'
+
+# Logout configuration
+ACCOUNT_LOGOUT_ON_GET = True  # Direct logout without confirmation
+
+# ===== Session Configuration =====
+
+# Session remember - ask user with "Remember me?" checkbox
+ACCOUNT_SESSION_REMEMBER = None
+
+# ===== Google OAuth Provider Configuration =====
+
+SOCIALACCOUNT_PROVIDERS = {
+    'google': {
+        'SCOPE': [
+            'profile',
+            'email',
+        ],
+        'AUTH_PARAMS': {
+            'access_type': 'online',
+        },
+        'APP': {
+            'client_id': os.getenv('GOOGLE_CLIENT_ID', ''),
+            'secret': os.getenv('GOOGLE_CLIENT_SECRET', ''),
+            'key': ''
+        }
+    }
+}
+
+# ===== Social Account Configuration =====
+
+# Store tokens - False for security
+SOCIALACCOUNT_STORE_TOKENS = False
+
+# Auto signup - user langsung dibuat tanpa form tambahan
+SOCIALACCOUNT_AUTO_SIGNUP = True
+
+# Query email from social account
+SOCIALACCOUNT_QUERY_EMAIL = True
+
+# Email required from social account
+SOCIALACCOUNT_EMAIL_REQUIRED = True
+
+
+
+# END DJANGO ALLAUTH CONFIGURATION
+# ============================================

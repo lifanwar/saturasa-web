@@ -179,4 +179,4 @@ class MenuOrderLog(TenantAwareModel):
     
     def __str__(self):
         return f"{self.menu_item_name} x{self.quantity} - {self.order_number}"
-
+    
