@@ -22,7 +22,7 @@ class Order(TenantAwareModel):
     
     # Order info
     order_number = models.CharField(max_length=50, unique=True, db_index=True)
-    customer = models.ForeignKey('customers.Customer', on_delete=models.PROTECT, related_name='orders', null=True, blank=True, help_text="Link ke customer (null untuk offline walk-in)")
+    customer = models.ForeignKey('customers.Customer', on_delete=models.SET_NULL, related_name='orders', null=True, blank=True, help_text="Link ke customer (null untuk offline walk-in)")
     offline_customer_name = models.CharField(max_length=200, blank=True, help_text="Nama customer untuk offline tanpa registrasi")
     
     # Order type & channel
