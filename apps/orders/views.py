@@ -133,12 +133,6 @@ def checkout_confirm(request):
                         customer_name = request.user.get_full_name() or request.user.email.split('@')[0]
                 
                 # Case 2: Guest (not logged in) - use input from form
-                # customer_name already from POST.get above
-                
-                # Validation
-                if not customer_name:
-                    messages.error(request, 'Nama wajib diisi!')
-                    return redirect('menu:menu_list')
                 
                 # Validation
                 if not customer_name:
