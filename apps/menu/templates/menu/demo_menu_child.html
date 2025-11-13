@@ -138,7 +138,7 @@
       
           // Cart Operations
           quickAddToCart(id, name, price, currency) {
-            const idx = this.cart.findIndex(item => item.id === id);
+            const idx = this.cart.findIndex(item => item.id === id && item.addons.length === 0);
             if (idx !== -1) {
               this.cart[idx].quantity += 1;
             } else {
@@ -156,7 +156,9 @@
             this.cart.splice(idx, 1);
             if (this.cart.length === 0) this.showCart = false;
           },
-          increaseQuantity(idx) { this.cart[idx].quantity += 1; },
+          increaseQuantity(idx) { 
+            this.cart[idx].quantity += 1; 
+          },
           decreaseQuantity(idx) {
             if (this.cart[idx].quantity > 1) {
               this.cart[idx].quantity -= 1;
@@ -178,26 +180,33 @@
             this.editItemIndex = idx;
             const item = this.cart[idx];
             this.currentItem = { ...item };
-            // group addons
+            
+            // Rebuild selectedAddons from cart item addons
             this.selectedAddons = { level_pedas: null, toppings: {} };
+            
+            // Group topping by id and sum quantity
+            const toppingMap = {};
             item.addons?.forEach(addon => {
               if (addon.type === "level_pedas") {
                 this.selectedAddons.level_pedas = { ...addon };
               }
               if (addon.type === "topping") {
-                this.selectedAddons.toppings[addon.id] = {
-                  ...addon,
-                  quantity: Number(addon.quantity) || 1
-                };
+                if (!toppingMap[addon.id]) {
+                  toppingMap[addon.id] = { ...addon, quantity: 0 };
+                }
+                toppingMap[addon.id].quantity += Number(addon.quantity) || 1;
               }
             });
+            
+            this.selectedAddons.toppings = toppingMap;
             this.showAddonModal = true;
           },
           closeAddonModal() {
             this.showAddonModal = false;
             this.currentItem = null;
             this.selectedAddons = { level_pedas: null, toppings: {} };
-            this.isEditMode = false; this.editItemIndex = null;
+            this.isEditMode = false; 
+            this.editItemIndex = null;
           },
       
           // Addon Selection
@@ -228,7 +237,11 @@
             if (this.selectedAddons.toppings[id]) {
               this.selectedAddons.toppings[id].quantity += 1;
             } else {
-              this.selectedAddons.toppings[id] = { ...option, quantity: 1, price: Number(option.price) || 0 };
+              this.selectedAddons.toppings[id] = { 
+                ...option, 
+                quantity: 1, 
+                price: Number(option.price) || 0 
+              };
             }
           },
           decreaseToppingQuantity(option) {
@@ -243,11 +256,25 @@
           // Confirm Addons Modal
           confirmAddons() {
             const addonsArr = [];
-            if (this.selectedAddons.level_pedas)
-              addonsArr.push({ ...this.selectedAddons.level_pedas, type: "level_pedas", quantity: 1 });
-            Object.values(this.selectedAddons.toppings).forEach(t =>
-              addonsArr.push({ ...t, type: "topping", quantity: Number(t.quantity) || 1 })
-            );
+            
+            // Add level pedas (always qty 1)
+            if (this.selectedAddons.level_pedas) {
+              addonsArr.push({ 
+                ...this.selectedAddons.level_pedas, 
+                type: "level_pedas", 
+                quantity: 1 
+              });
+            }
+            
+            // Add toppings with their quantities
+            Object.values(this.selectedAddons.toppings).forEach(t => {
+              addonsArr.push({ 
+                ...t, 
+                type: "topping", 
+                quantity: Number(t.quantity) || 1 
+              });
+            });
+            
             if (this.isEditMode && this.editItemIndex !== null) {
               this.cart[this.editItemIndex].addons = addonsArr;
             } else {
@@ -257,6 +284,7 @@
                 addons: addonsArr
               });
             }
+            
             this.closeAddonModal();
             this.showCart = true;
           },
@@ -265,6 +293,7 @@
           getGroupedAddons(addons) {
             const groups = [];
             const toppingMap = {};
+            
             addons?.forEach(addon => {
               if (addon.type === "level_pedas") {
                 groups.push({
@@ -272,39 +301,59 @@
                   name: addon.name,
                   type: "level_pedas",
                   quantity: 1,
+                  price: Number(addon.price) || 0,
                   totalPrice: Number(addon.price) || 0
                 });
               }
               if (addon.type === "topping") {
                 if (!toppingMap[addon.id]) {
-                  toppingMap[addon.id] = { ...addon, quantity: 0, totalPrice: 0 };
+                  toppingMap[addon.id] = { 
+                    ...addon, 
+                    quantity: 0, 
+                    totalPrice: 0 
+                  };
                 }
-                toppingMap[addon.id].quantity += Number(addon.quantity) || 1;
-                toppingMap[addon.id].totalPrice += (Number(addon.price) || 0) * (Number(addon.quantity) || 1);
+                const qty = Number(addon.quantity) || 1;
+                const price = Number(addon.price) || 0;
+                toppingMap[addon.id].quantity += qty;
+                toppingMap[addon.id].totalPrice += price * qty;
               }
             });
+            
             return [ ...groups, ...Object.values(toppingMap) ];
           },
+          
           decreaseAddonInCart(itemIdx, groupId) {
             const item = this.cart[itemIdx];
-            const idx = item.addons.findIndex(a => a.id === groupId && a.type === "topping");
-            if (idx !== -1) {
-              if (item.addons[idx].quantity > 1) {
-                item.addons[idx].quantity -= 1;
+            const addonIdx = item.addons.findIndex(a => a.id === groupId && a.type === "topping");
+            
+            if (addonIdx !== -1) {
+              const addon = item.addons[addonIdx];
+              if (addon.quantity > 1) {
+                addon.quantity -= 1;
               } else {
-                item.addons.splice(idx, 1);
+                item.addons.splice(addonIdx, 1);
               }
             }
           },
+          
           increaseAddonInCart(itemIdx, addonGroup) {
             const item = this.cart[itemIdx];
-            item.addons.push({
-              ...addonGroup,
-              type: "topping",
-              quantity: 1,
-              price: Number(addonGroup.price) || 0
-            });
+            const existingIdx = item.addons.findIndex(a => a.id === addonGroup.id && a.type === "topping");
+            
+            if (existingIdx !== -1) {
+              item.addons[existingIdx].quantity += 1;
+            } else {
+              item.addons.push({
+                id: addonGroup.id,
+                name: addonGroup.name,
+                price: Number(addonGroup.totalPrice) / Number(addonGroup.quantity) || 0,
+                type: "topping",
+                quantity: 1
+              });
+            }
           },
+          
           removeAddonGroupFromCart(itemIdx, groupId) {
             const item = this.cart[itemIdx];
             item.addons = item.addons.filter(a => a.id !== groupId);
@@ -313,22 +362,32 @@
           // Calculation Utilities
           calculateModalTotal() {
             let total = Number(this.currentItem?.base_price) || 0;
-            if (this.selectedAddons.level_pedas)
+            
+            if (this.selectedAddons.level_pedas) {
               total += Number(this.selectedAddons.level_pedas.price) || 0;
+            }
+            
             Object.values(this.selectedAddons.toppings).forEach(t => {
               total += (Number(t.price) || 0) * (Number(t.quantity) || 1);
             });
+            
             return total;
           },
+          
           calculateItemTotal(item) {
             let total = Number(item.base_price) || 0;
+            
             if (item.addons?.length > 0) {
-              total += item.addons.reduce((sum, addon) =>
-                sum + (Number(addon.price) || 0) * (Number(addon.quantity) || 1), 0
-              );
+              total += item.addons.reduce((sum, addon) => {
+                const price = Number(addon.price) || 0;
+                const qty = Number(addon.quantity) || 1;
+                return sum + (price * qty);
+              }, 0);
             }
+            
             return total;
           },
+          
           formatPrice(amount, currency) {
             amount = Number(amount) || 0;
             if (currency === "IDR") return "Rp " + amount.toLocaleString("id-ID");
@@ -338,34 +397,46 @@
       
           // Computed Props
           get totalPrice() {
-            return this.cart.reduce((sum, item) =>
-              sum + this.calculateItemTotal(item) * (Number(item.quantity) || 1), 0
-            );
+            return this.cart.reduce((sum, item) => {
+              const itemTotal = this.calculateItemTotal(item);
+              const qty = Number(item.quantity) || 1;
+              return sum + (itemTotal * qty);
+            }, 0);
           },
+          
           get formattedTotal() {
-            return this.cart.length > 0 ? this.formatPrice(this.totalPrice, this.cart[0].currency) : this.formatPrice(0, "IDR");
+            if (this.cart.length > 0) {
+              return this.formatPrice(this.totalPrice, this.cart[0].currency);
+            }
+            return this.formatPrice(0, "IDR");
           },
+          
           get totalItems() {
             return this.cart.reduce((sum, item) => sum + (Number(item.quantity) || 1), 0);
           },
+          
           get cartDataJson() {
             return JSON.stringify(this.cart.map(item => ({
               id: item.id,
               quantity: item.quantity,
-              addon_ids: item.addons?.map(a => a.id)
+              addon_details: item.addons?.map(a => ({
+                id: a.id,
+                quantity: Number(a.quantity) || 1
+              })) || []
             })));
           },
+          
           prepareCheckout(e) {
             if (this.cart.length === 0) {
               e.preventDefault();
               alert("Cart kosong!");
               return;
             }
-            // You can add custom checkout logic here
-            console.log("Cart data", this.cartDataJson);
+            console.log("Cart data:", this.cartDataJson);
           }
         };
       }
+      
       
 </script>
 
