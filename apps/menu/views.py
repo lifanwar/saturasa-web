@@ -26,7 +26,7 @@ def menu_list(request):
         'menu_items': menu_items,
     }
     
-    return render(request, 'menu/menu_list.html', context)
+    return render(request, 'menu/demo_menu_child.html', context)
 
 
 def menu_items_json(request):
