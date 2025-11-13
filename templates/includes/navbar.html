@@ -3,50 +3,60 @@
 <header>
     <nav class="navbar bg-base-100 shadow-lg" aria-label="Main navigation">
         <div class="flex-1">
-            <a href="/" class="btn btn-ghost text-xl">
+            <a href="/" class="btn btn-ghost text-xl normal-case">
                 <i class="fas fa-utensils" aria-hidden="true"></i>
-                <span>Restaurant App</span>
+                <span class="hidden sm:inline">Restaurant App</span>
+                <span class="sm:hidden">Restaurant</span>
             </a>
         </div>
         
         <div class="flex-none gap-2">
-            <ul class="menu menu-horizontal px-1">
-                <li><a href="{% url 'menu:menu_list' %}">Menu</a></li>
-                
-                {% if user.is_authenticated %}
-                    <!-- User sudah login -->
-                    <li>
-                        <details>
-                            <summary>
-                                <i class="fas fa-user-circle"></i>
-                                {{ user.email|truncatechars:20 }}
-                            </summary>
-                            <ul class="p-2 bg-base-100 rounded-t-none z-50">
-                                <li>
-                                    <a href="{% url 'customers:dashboard' %}">
-                                        <i class="fas fa-tachometer-alt"></i>
-                                        Dashboard
-                                    </a>
-                                </li>
-                                <li>
-                                    <a href="{% url 'account_logout' %}">
-                                        <i class="fas fa-sign-out-alt"></i>
-                                        Logout
-                                    </a>
-                                </li>
-                            </ul>
-                        </details>
-                    </li>
-                {% else %}
-                    <!-- User belum login -->
-                    <li>
-                        <a href="{% url 'account_login' %}" class="btn btn-primary btn-sm">
-                            <i class="fab fa-google"></i>
-                            Login
-                        </a>
-                    </li>
-                {% endif %}
-            </ul>
+            <!-- Menu Link - Hidden on mobile, show on tablet+ -->
+            <a href="{% url 'menu:menu_list' %}" class="btn btn-ghost hidden md:flex">
+                Menu
+            </a>
+            
+            {% if user.is_authenticated %}
+                <!-- Authenticated User - Simplified for mobile -->
+                <div class="dropdown dropdown-end">
+                    <label tabindex="0" class="btn btn-ghost btn-circle avatar placeholder">
+                        <div class="w-10 rounded-full bg-neutral text-neutral-content">
+                            <span class="text-xl">
+                                <i class="fas fa-user"></i>
+                            </span>
+                        </div>
+                    </label>
+                    <ul tabindex="0" class="mt-3 z-[1] p-2 shadow menu menu-sm dropdown-content bg-base-100 rounded-box w-52">
+                        <li class="menu-title">
+                            <span class="truncate">{{ user.email }}</span>
+                        </li>
+                        <li class="md:hidden">
+                            <a href="{% url 'menu:menu_list' %}">
+                                <i class="fas fa-list"></i>
+                                Menu
+                            </a>
+                        </li>
+                        <li>
+                            <a href="{% url 'customers:dashboard' %}">
+                                <i class="fas fa-tachometer-alt"></i>
+                                Dashboard
+                            </a>
+                        </li>
+                        <li>
+                            <a href="{% url 'account_logout' %}">
+                                <i class="fas fa-sign-out-alt"></i>
+                                Logout
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            {% else %}
+                <!-- Not Authenticated - Compact button -->
+                <a href="{% url 'account_login' %}" class="btn btn-primary btn-sm">
+                    <i class="fab fa-google"></i>
+                    <span class="hidden sm:inline ml-1">Login</span>
+                </a>
+            {% endif %}
             
             {% include 'includes/theme_toggle.html' %}
         </div>
