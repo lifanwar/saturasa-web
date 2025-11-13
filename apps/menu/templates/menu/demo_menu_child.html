@@ -126,276 +126,247 @@
 <script>
     function menuApp() {
         return {
-            // ============================================
-            // STATE MANAGEMENT
-            // ============================================
-            cart: [],
-            showCart: false,
-            showAddonModal: false,
-            filterCategory: 'all',
-            currentItem: {},
-            selectedAddons: {
-                level_pedas: null, // satu objek saja, bukan array
-                toppings: {}       // {id: { ...addon, quantity: int }}
-            },
-            isEditMode: false,
-            editItemIndex: null,
-
-            // ============================================
-            // DATA CONFIGURATION
-            // ============================================
-            availableAddons: {
-                level_pedas: [
-                    { id: 1, name: 'Tidak Pedas', price: 0, type: 'level_pedas' },
-                    { id: 2, name: 'Sedikit Pedas', price: 0, type: 'level_pedas' },
-                    { id: 3, name: 'Sedang', price: 2000, type: 'level_pedas' },
-                    { id: 4, name: 'Pedas', price: 5000, type: 'level_pedas' },
-                    { id: 5, name: 'Extra Pedas', price: 8000, type: 'level_pedas' }
-                ],
-                topping: [
-                    { id: 6, name: 'Keju', price: 5000, type: 'topping' },
-                    { id: 7, name: 'Telur', price: 3000, type: 'topping' },
-                    { id: 8, name: 'Ayam', price: 8000, type: 'topping' },
-                    { id: 9, name: 'Sosis', price: 6000, type: 'topping' }
-                ]
-            },
-
-            // ============================================
-            // CART OPERATIONS
-            // ============================================
-            quickAddToCart(id, name, price, currency) {
-                const existIdx = this.cart.findIndex(item =>
-                    item.id === id && (!item.addons || item.addons.length === 0));
-                if (existIdx !== -1) {
-                    this.cart[existIdx].quantity += 1;
-                } else {
-                    this.cart.push({
-                        id, name,
-                        base_price: price,
-                        currency,
-                        quantity: 1,
-                        addons: []
-                    });
-                }
-                this.showCart = true;
-            },
-            removeFromCart(idx) {
-                this.cart.splice(idx, 1);
-                if (this.cart.length === 0) this.showCart = false;
-            },
-            increaseQuantity(idx) { this.cart[idx].quantity += 1; },
-            decreaseQuantity(idx) {
-                if (this.cart[idx].quantity > 1) this.cart[idx].quantity -= 1;
-                else this.removeFromCart(idx);
-            },
-
-            // ============================================
-            // ADDON MODAL
-            // ============================================
-            openAddonModalForNew(id, name, price, currency) {
-                this.isEditMode = false;
-                this.editItemIndex = null;
-                this.currentItem = { id, name, base_price: price, currency };
-                this.selectedAddons = { level_pedas: null, toppings: {} };
-                this.showAddonModal = true;
-            },
-            openAddonModalForEdit(itemIdx) {
-                this.isEditMode = true;
-                this.editItemIndex = itemIdx;
-                const item = this.cart[itemIdx];
-                this.currentItem = { ...item };
-                this.selectedAddons.level_pedas = null;
-                this.selectedAddons.toppings = {};
-                item.addons?.forEach(addon => {
-                    if (addon.type === 'level_pedas') this.selectedAddons.level_pedas = { ...addon };
-                    if (addon.type === 'topping') {
-                        if (!this.selectedAddons.toppings[addon.id]) {
-                            this.selectedAddons.toppings[addon.id] = { ...addon, quantity: 1 };
-                        } else {
-                            this.selectedAddons.toppings[addon.id].quantity += 1;
-                        }
-                    }
-                });
-                this.showAddonModal = true;
-            },
-            closeAddonModal() {
-                this.showAddonModal = false;
-                this.currentItem = {};
-                this.selectedAddons = { level_pedas: null, toppings: {} };
-                this.isEditMode = false;
-                this.editItemIndex = null;
-            },
-
-            selectAddon(type, option) {
-                if (type === 'level_pedas') this.selectedAddons.level_pedas = { ...option };
-            },
-            isAddonSelected(type, id) {
-                if (type === 'level_pedas')
-                    return this.selectedAddons.level_pedas && this.selectedAddons.level_pedas.id === id;
-                if (type === 'topping')
-                    return this.selectedAddons.toppings[id]?.quantity > 0;
-                return false;
-            },
-
-            // Confirm Addon
-            confirmAddons() {
-                // Grouping: level pedas single, toppings quantity
-                let allAddons = [];
-                if (this.selectedAddons.level_pedas) allAddons.push({ ...this.selectedAddons.level_pedas });
-                Object.values(this.selectedAddons.toppings).forEach(t => {
-                    for (let i = 0; i < t.quantity; i++) allAddons.push({ ...t, quantity: 1 });
-                });
-
-                if (this.isEditMode && this.editItemIndex !== null) {
-                    this.cart[this.editItemIndex].addons = allAddons;
-                } else {
-                    this.cart.push({
-                        ...this.currentItem,
-                        quantity: 1,
-                        addons: allAddons
-                    });
-                }
-                this.closeAddonModal();
-                this.showCart = true;
-            },
-
-            // ============================================
-            // TOPPING QUANTITY MANAGEMENT (Modal)
-            // ============================================
-            getToppingQuantity(id) {
-                return this.selectedAddons.toppings[id]?.quantity || 0;
-            },
-            increaseToppingQuantity(option) {
-                if (this.selectedAddons.toppings[option.id]) {
-                    this.selectedAddons.toppings[option.id].quantity += 1;
-                } else {
-                    this.selectedAddons.toppings[option.id] = { ...option, quantity: 1 };
-                }
-            },
-            decreaseToppingQuantity(option) {
-                if (this.selectedAddons.toppings[option.id]?.quantity > 1) {
-                    this.selectedAddons.toppings[option.id].quantity -= 1;
-                } else {
-                    delete this.selectedAddons.toppings[option.id];
-                }
-            },
-
-            // ============================================
-            // GROUPED ADDONS FOR DISPLAY (Cart)
-            // ============================================
-            getGroupedAddons(addons) {
-                // Return [{
-                //   id, name, type, quantity, totalPrice
-                // }]
-                const groups = [];
-                let toppingMap = {}, toppingArr = [];
-                addons?.forEach(addon => {
-                    if (addon.type === 'level_pedas') {
-                        groups.push({
-                            id: addon.id,
-                            name: addon.name,
-                            type: 'level_pedas',
-                            quantity: 1,
-                            totalPrice: addon.price
-                        });
-                    }
-                    if (addon.type === 'topping') {
-                        if (!toppingMap[addon.id]) toppingMap[addon.id] = { ...addon, quantity: 1 };
-                        else toppingMap[addon.id].quantity += 1;
-                    }
-                });
-                toppingArr = Object.values(toppingMap).map(t => ({
-                    id: t.id,
-                    name: t.name,
-                    type: t.type,
-                    quantity: t.quantity,
-                    totalPrice: t.price * t.quantity
-                }));
-                return [...groups, ...toppingArr];
-            },
-
-            // Remove single addon group from cart item (by id)
-            removeAddonGroupFromCart(itemIdx, groupId) {
-                const item = this.cart[itemIdx];
-                // Remove ALL addons in group (same id)
-                item.addons = item.addons.filter(a => a.id !== groupId);
-            },
-
-            decreaseAddonInCart(itemIdx, groupId) {
-                const item = this.cart[itemIdx];
-                const idx = item.addons.findIndex(a => a.id === groupId && a.type === 'topping');
-                if (idx !== -1) item.addons.splice(idx, 1);
-            },
-            increaseAddonInCart(itemIdx, group) {
-                // Increase topping qty
-                if (group.type !== 'topping') return;
-                const topping = this.availableAddons.topping.find(t => t.id === group.id);
-                if (topping) this.cart[itemIdx].addons.push({ ...topping, type: 'topping', quantity: 1 });
-            },
-
-            // ============================================
-            // CALCULATION UTILITIES
-            // ============================================
-            calculateModalTotal() {
-                let total = this.currentItem.base_price || 0;
-                if (this.selectedAddons.level_pedas)
-                    total += this.selectedAddons.level_pedas.price;
-                Object.values(this.selectedAddons.toppings).forEach(t => {
-                    total += t.price * t.quantity;
-                });
-                return total;
-            },
-            calculateItemTotal(item) {
-                let total = item.base_price;
-                if (item.addons && item.addons.length > 0) {
-                    total += item.addons.reduce((sum, addon) => sum + addon.price, 0);
-                }
-                return total;
-            },
-            formatPrice(amount, currency) {
-                if (currency === 'IDR') {
-                    return 'Rp ' + Math.round(amount).toLocaleString('id-ID');
-                } else if (currency === 'EGP') {
-                    return 'EGP ' + amount.toFixed(2);
-                }
-                return currency + ' ' + amount;
-            },
-
-            // ============================================
-            // COMPUTED PROPERTIES
-            // ============================================
-            get totalPrice() {
-                return this.cart.reduce((sum, item) => sum + (this.calculateItemTotal(item) * item.quantity), 0);
-            },
-            get formattedTotal() {
-                if (this.cart.length > 0)
-                    return this.formatPrice(this.totalPrice, this.cart[0].currency);
-                return 'Rp 0';
-            },
-            get totalItems() {
-                return this.cart.reduce((sum, item) => sum + item.quantity, 0);
-            },
-            get cartDataJson() {
-                return JSON.stringify(this.cart.map(item => ({
-                    id: item.id,
-                    quantity: item.quantity,
-                    addon_ids: (item.addons || []).map(a => a.id)
-                })));
-            },
-
-            // ============================================
-            // CHECKOUT
-            // ============================================
-            prepareCheckout(e) {
-                if (this.cart.length === 0) {
-                    e.preventDefault();
-                    alert('Cart kosong!');
-                    return;
-                }
-                console.log('Cart data:', this.cartDataJson);
+          // State
+          cart: [],
+          showCart: false,
+          showAddonModal: false,
+          filterCategory: "all",
+          currentItem: null,
+          selectedAddons: { level_pedas: null, toppings: {} },
+          isEditMode: false,
+          editItemIndex: null,
+      
+          // Cart Operations
+          quickAddToCart(id, name, price, currency) {
+            const idx = this.cart.findIndex(item => item.id === id);
+            if (idx !== -1) {
+              this.cart[idx].quantity += 1;
+            } else {
+              this.cart.push({
+                id, name,
+                base_price: Number(price) || 0,
+                currency,
+                quantity: 1,
+                addons: []
+              });
             }
-        }
-    }
+            this.showCart = true;
+          },
+          removeFromCart(idx) {
+            this.cart.splice(idx, 1);
+            if (this.cart.length === 0) this.showCart = false;
+          },
+          increaseQuantity(idx) { this.cart[idx].quantity += 1; },
+          decreaseQuantity(idx) {
+            if (this.cart[idx].quantity > 1) {
+              this.cart[idx].quantity -= 1;
+            } else {
+              this.removeFromCart(idx);
+            }
+          },
+      
+          // Addon Modal Logic
+          openAddonModalForNew(id, name, price, currency) {
+            this.isEditMode = false;
+            this.editItemIndex = null;
+            this.currentItem = { id, name, base_price: Number(price) || 0, currency };
+            this.selectedAddons = { level_pedas: null, toppings: {} };
+            this.showAddonModal = true;
+          },
+          openAddonModalForEdit(idx) {
+            this.isEditMode = true;
+            this.editItemIndex = idx;
+            const item = this.cart[idx];
+            this.currentItem = { ...item };
+            // group addons
+            this.selectedAddons = { level_pedas: null, toppings: {} };
+            item.addons?.forEach(addon => {
+              if (addon.type === "level_pedas") {
+                this.selectedAddons.level_pedas = { ...addon };
+              }
+              if (addon.type === "topping") {
+                this.selectedAddons.toppings[addon.id] = {
+                  ...addon,
+                  quantity: Number(addon.quantity) || 1
+                };
+              }
+            });
+            this.showAddonModal = true;
+          },
+          closeAddonModal() {
+            this.showAddonModal = false;
+            this.currentItem = null;
+            this.selectedAddons = { level_pedas: null, toppings: {} };
+            this.isEditMode = false; this.editItemIndex = null;
+          },
+      
+          // Addon Selection
+          selectAddon(type, option, single = false) {
+            option.price = Number(option.price) || 0;
+            if (type === "level_pedas") {
+              this.selectedAddons.level_pedas = { ...option };
+            }
+            if (type === "topping") {
+              const id = option.id;
+              if (!this.selectedAddons.toppings[id]) {
+                this.selectedAddons.toppings[id] = { ...option, quantity: 1 };
+              }
+            }
+          },
+          isAddonSelected(type, id) {
+            if (type === "level_pedas") return this.selectedAddons.level_pedas?.id === id;
+            if (type === "topping") return this.selectedAddons.toppings[id]?.quantity > 0;
+            return false;
+          },
+      
+          // Addon Quantity Controls (Modal)
+          getToppingQuantity(id) {
+            return this.selectedAddons.toppings[id]?.quantity || 0;
+          },
+          increaseToppingQuantity(option) {
+            const id = option.id;
+            if (this.selectedAddons.toppings[id]) {
+              this.selectedAddons.toppings[id].quantity += 1;
+            } else {
+              this.selectedAddons.toppings[id] = { ...option, quantity: 1, price: Number(option.price) || 0 };
+            }
+          },
+          decreaseToppingQuantity(option) {
+            const id = option.id;
+            if (this.selectedAddons.toppings[id]?.quantity > 1) {
+              this.selectedAddons.toppings[id].quantity -= 1;
+            } else {
+              delete this.selectedAddons.toppings[id];
+            }
+          },
+      
+          // Confirm Addons Modal
+          confirmAddons() {
+            const addonsArr = [];
+            if (this.selectedAddons.level_pedas)
+              addonsArr.push({ ...this.selectedAddons.level_pedas, type: "level_pedas", quantity: 1 });
+            Object.values(this.selectedAddons.toppings).forEach(t =>
+              addonsArr.push({ ...t, type: "topping", quantity: Number(t.quantity) || 1 })
+            );
+            if (this.isEditMode && this.editItemIndex !== null) {
+              this.cart[this.editItemIndex].addons = addonsArr;
+            } else {
+              this.cart.push({
+                ...this.currentItem,
+                quantity: 1,
+                addons: addonsArr
+              });
+            }
+            this.closeAddonModal();
+            this.showCart = true;
+          },
+      
+          // Cart Addon Controls
+          getGroupedAddons(addons) {
+            const groups = [];
+            const toppingMap = {};
+            addons?.forEach(addon => {
+              if (addon.type === "level_pedas") {
+                groups.push({
+                  id: addon.id,
+                  name: addon.name,
+                  type: "level_pedas",
+                  quantity: 1,
+                  totalPrice: Number(addon.price) || 0
+                });
+              }
+              if (addon.type === "topping") {
+                if (!toppingMap[addon.id]) {
+                  toppingMap[addon.id] = { ...addon, quantity: 0, totalPrice: 0 };
+                }
+                toppingMap[addon.id].quantity += Number(addon.quantity) || 1;
+                toppingMap[addon.id].totalPrice += (Number(addon.price) || 0) * (Number(addon.quantity) || 1);
+              }
+            });
+            return [ ...groups, ...Object.values(toppingMap) ];
+          },
+          decreaseAddonInCart(itemIdx, groupId) {
+            const item = this.cart[itemIdx];
+            const idx = item.addons.findIndex(a => a.id === groupId && a.type === "topping");
+            if (idx !== -1) {
+              if (item.addons[idx].quantity > 1) {
+                item.addons[idx].quantity -= 1;
+              } else {
+                item.addons.splice(idx, 1);
+              }
+            }
+          },
+          increaseAddonInCart(itemIdx, addonGroup) {
+            const item = this.cart[itemIdx];
+            item.addons.push({
+              ...addonGroup,
+              type: "topping",
+              quantity: 1,
+              price: Number(addonGroup.price) || 0
+            });
+          },
+          removeAddonGroupFromCart(itemIdx, groupId) {
+            const item = this.cart[itemIdx];
+            item.addons = item.addons.filter(a => a.id !== groupId);
+          },
+      
+          // Calculation Utilities
+          calculateModalTotal() {
+            let total = Number(this.currentItem?.base_price) || 0;
+            if (this.selectedAddons.level_pedas)
+              total += Number(this.selectedAddons.level_pedas.price) || 0;
+            Object.values(this.selectedAddons.toppings).forEach(t => {
+              total += (Number(t.price) || 0) * (Number(t.quantity) || 1);
+            });
+            return total;
+          },
+          calculateItemTotal(item) {
+            let total = Number(item.base_price) || 0;
+            if (item.addons?.length > 0) {
+              total += item.addons.reduce((sum, addon) =>
+                sum + (Number(addon.price) || 0) * (Number(addon.quantity) || 1), 0
+              );
+            }
+            return total;
+          },
+          formatPrice(amount, currency) {
+            amount = Number(amount) || 0;
+            if (currency === "IDR") return "Rp " + amount.toLocaleString("id-ID");
+            if (currency === "EGP") return "EGP " + amount.toFixed(2);
+            return currency + " " + amount;
+          },
+      
+          // Computed Props
+          get totalPrice() {
+            return this.cart.reduce((sum, item) =>
+              sum + this.calculateItemTotal(item) * (Number(item.quantity) || 1), 0
+            );
+          },
+          get formattedTotal() {
+            return this.cart.length > 0 ? this.formatPrice(this.totalPrice, this.cart[0].currency) : this.formatPrice(0, "IDR");
+          },
+          get totalItems() {
+            return this.cart.reduce((sum, item) => sum + (Number(item.quantity) || 1), 0);
+          },
+          get cartDataJson() {
+            return JSON.stringify(this.cart.map(item => ({
+              id: item.id,
+              quantity: item.quantity,
+              addon_ids: item.addons?.map(a => a.id)
+            })));
+          },
+          prepareCheckout(e) {
+            if (this.cart.length === 0) {
+              e.preventDefault();
+              alert("Cart kosong!");
+              return;
+            }
+            // You can add custom checkout logic here
+            console.log("Cart data", this.cartDataJson);
+          }
+        };
+      }
+      
 </script>
 
 

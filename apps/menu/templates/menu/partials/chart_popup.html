@@ -209,31 +209,36 @@
                     </div>
                     
                     <div class="grid grid-cols-2 gap-2">
-                        <template x-for="option in availableAddons.level_pedas" :key="option.id">
-                            <label class="cursor-pointer">
-                                <input 
-                                    type="radio"
-                                    name="level_pedas"
-                                    :value="option.id"
-                                    :checked="isAddonSelected('level_pedas', option.id)"
-                                    @change="selectAddon('level_pedas', option, true)"
-                                    class="peer sr-only">
-                                
-                                <div class="bg-white border-2 rounded-lg p-3 peer-checked:border-orange-500 peer-checked:bg-orange-50 hover:border-orange-300">
-                                    <div class="flex items-center justify-between">
-                                        <div class="flex items-center gap-2">
-                                            <i class="fa-solid fa-circle-dot text-orange-500 opacity-0 peer-checked:opacity-100"></i>
-                                            <span class="text-sm font-medium" x-text="option.name"></span>
-                                        </div>
-                                        <span 
-                                            class="text-xs font-bold px-2 py-0.5 rounded"
-                                            :class="option.price > 0 ? 'text-green-600 bg-green-100' : 'text-gray-500'"
-                                            x-text="option.price > 0 ? '+' + formatPrice(option.price, currentItem.currency) : 'Gratis'">
-                                        </span>
+                        {% for addon in level_pedas_addons %}
+                        <label class="cursor-pointer">
+                            <input 
+                                type="radio"
+                                name="level_pedas"
+                                :value="{{ addon.id }}"
+                                :checked="isAddonSelected('level_pedas', {{ addon.id }})"
+                                @change="selectAddon('level_pedas', { id: {{ addon.id }}, name: '{{ addon.name }}', price: {{ addon.price|floatformat:0 }}, type: '{{ addon.type }}' }, true)"
+                                class="peer sr-only">
+                            
+                            <div class="bg-white border-2 rounded-lg p-3 peer-checked:border-orange-500 peer-checked:bg-orange-50 hover:border-orange-300">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center gap-2">
+                                        <i class="fa-solid fa-circle-dot text-orange-500 opacity-0 peer-checked:opacity-100"></i>
+                                        <span class="text-sm font-medium">{{ addon.name }}</span>
                                     </div>
+                                    <span 
+                                        class="text-xs font-bold px-2 py-0.5 rounded"
+                                        :class="{{ addon.price|floatformat:0 }} > 0 ? 'text-green-600 bg-green-100' : 'text-gray-500'">
+                                        {% if addon.price > 0 %}
+                                            +{{ addon.price|floatformat:0 }}
+                                        {% else %}
+                                            Gratis
+                                        {% endif %}
+                                    </span>
                                 </div>
-                            </label>
-                        </template>
+                            </div>
+                        </label>
+                    {% endfor %}
+
                     </div>
                     
                 </div>
@@ -248,60 +253,67 @@
                         </div>
                         <span class="badge badge-ghost badge-sm">Opsional</span>
                     </div>
-                    
+
                     <div class="space-y-2">
-                        <template x-for="option in availableAddons.topping" :key="option.id">
-                            <div class="bg-white border-2 rounded-lg p-3 hover:border-yellow-300 transition-colors"
-                                 :class="getToppingQuantity(option.id) > 0 ? 'border-yellow-500 bg-yellow-50' : 'border-gray-200'">
-                                <div class="flex items-center justify-between gap-3">
-                                    <!-- Topping Info -->
-                                    <div class="flex items-center gap-2 flex-1 min-w-0">
-                                        <i class="fa-solid fa-square-check text-yellow-500 flex-shrink-0 transition-opacity"
-                                           :class="getToppingQuantity(option.id) > 0 ? 'opacity-100' : 'opacity-0'"></i>
-                                        <div class="flex-1 min-w-0">
-                                            <p class="text-sm font-medium truncate" x-text="option.name"></p>
-                                            <p class="text-xs text-green-600 font-bold" x-text="'+' + formatPrice(option.price, currentItem.currency)"></p>
-                                        </div>
-                                    </div>
-                                    
-                                    <!-- Quantity Controls -->
-                                    <div class="flex items-center gap-2 flex-shrink-0">
-                                        <!-- Decrease Button -->
-                                        <button 
-                                            type="button"
-                                            @click="decreaseToppingQuantity(option)"
-                                            x-show="getToppingQuantity(option.id) > 0"
-                                            class="btn btn-xs btn-circle btn-ghost hover:bg-red-100 hover:text-red-600">
-                                            <i class="fa-solid fa-minus text-xs"></i>
-                                        </button>
-                                        
-                                        <!-- Quantity Display -->
-                                        <div x-show="getToppingQuantity(option.id) > 0"
-                                             class="min-w-[2rem] text-center">
-                                            <span class="font-bold text-sm" x-text="getToppingQuantity(option.id)"></span>
-                                        </div>
-                                        
-                                        <!-- Increase Button -->
-                                        <button 
-                                            type="button"
-                                            @click="increaseToppingQuantity(option)"
-                                            class="btn btn-xs btn-circle transition-colors"
-                                            :class="getToppingQuantity(option.id) > 0 ? 'btn-ghost hover:bg-yellow-500 hover:text-white' : 'bg-yellow-500 text-white hover:bg-yellow-600'">
-                                            <i class="fa-solid fa-plus text-xs"></i>
-                                        </button>
-                                    </div>
-                                </div>
-                                
-                                <!-- Subtotal (if qty > 1) -->
-                                <div x-show="getToppingQuantity(option.id) > 1" 
-                                     class="mt-2 pt-2 border-t border-yellow-200 flex justify-between text-xs">
-                                    <span class="text-gray-600">Subtotal:</span>
-                                    <span class="font-bold text-green-600" 
-                                          x-text="formatPrice(option.price * getToppingQuantity(option.id), currentItem.currency)">
-                                    </span>
-                                </div>
+                        {% for addon in topping_addons %}
+                <div class="bg-white border-2 rounded-lg p-3 hover:border-yellow-300 transition-colors"
+                     :class="getToppingQuantity({{ addon.id }}) > 0 ? 'border-yellow-500 bg-yellow-50' : 'border-gray-200'">
+                    <div class="flex items-center justify-between gap-3">
+                        <!-- Topping Info -->
+                        <div class="flex items-center gap-2 flex-1 min-w-0">
+                            <i class="fa-solid fa-square-check text-yellow-500 flex-shrink-0 transition-opacity"
+                               :class="getToppingQuantity({{ addon.id }}) > 0 ? 'opacity-100' : 'opacity-0'"></i>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-sm font-medium truncate">{{ addon.name }}</p>
+                                <p class="text-xs text-green-600 font-bold">
+                                    {% if addon.price > 0 %}
+                                        +{{ addon.price|floatformat:0 }}
+                                    {% else %}
+                                        Gratis
+                                    {% endif %}
+                                </p>
                             </div>
-                        </template>
+                        </div>
+                    
+                        <!-- Quantity Controls -->
+                        <div class="flex items-center gap-2 flex-shrink-0">
+                            <!-- Decrease Button -->
+                            <button 
+                                type="button"
+                                @click="decreaseToppingQuantity({ id: {{ addon.id }}, name: '{{ addon.name }}', price: {{ addon.price|floatformat:0 }}, type: '{{ addon.type }}' })"
+                                x-show="getToppingQuantity({{ addon.id }}) > 0"
+                                class="btn btn-xs btn-circle btn-ghost hover:bg-red-100 hover:text-red-600">
+                                <i class="fa-solid fa-minus text-xs"></i>
+                            </button>
+                        
+                            <!-- Quantity Display -->
+                            <div x-show="getToppingQuantity({{ addon.id }}) > 0"
+                                 class="min-w-[2rem] text-center">
+                                <span class="font-bold text-sm" x-text="getToppingQuantity({{ addon.id }})"></span>
+                            </div>
+                        
+                            <!-- Increase Button -->
+                            <button 
+                                type="button"
+                                @click="increaseToppingQuantity({ id: {{ addon.id }}, name: '{{ addon.name }}', price: {{ addon.price|floatformat:0 }}, type: '{{ addon.type }}' })"
+                                class="btn btn-xs btn-circle transition-colors"
+                                :class="getToppingQuantity({{ addon.id }}) > 0 ? 'btn-ghost hover:bg-yellow-500 hover:text-white' : 'bg-yellow-500 text-white hover:bg-yellow-600'">
+                                <i class="fa-solid fa-plus text-xs"></i>
+                            </button>
+                        </div>
+                    </div>
+                
+                    <!-- Subtotal (if qty > 1) -->
+                    <div x-show="getToppingQuantity({{ addon.id }}) > 1" 
+                         class="mt-2 pt-2 border-t border-yellow-200 flex justify-between text-xs">
+                        <span class="text-gray-600">Subtotal:</span>
+                        <span class="font-bold text-green-600" 
+                              x-text="formatPrice({{ addon.price|floatformat:0 }} * getToppingQuantity({{ addon.id }}), currentItem.currency)">
+                        </span>
+                    </div>
+                </div>
+            {% endfor %}
+            
                     </div>
                 </div>
                 

@@ -139,3 +139,24 @@ class MenuItem(TenantAwareModel):
         if self.is_out_of_stock():
             self.is_available = False
         super().save(*args, **kwargs)
+
+class MenuAddon(TenantAwareModel):
+    """
+    Model Addon sederhana, bisa untuk topping maupun level pedas.
+    frontend: availableAddons.level_pedas & availableAddons.topping
+    """
+    TYPE_CHOICES = [
+        ('level_pedas', 'Level Pedas'),
+        ('topping', 'Topping'),
+    ]
+    name = models.CharField(max_length=100)
+    type = models.CharField(max_length=20, choices=TYPE_CHOICES)
+    price = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    is_active = models.BooleanField(default=True)
+    display_order = models.IntegerField(default=0)
+
+    class Meta:
+        ordering = ['type', 'display_order', 'name']
+
+    def __str__(self):
+        return f"{self.get_type_display()}: {self.name}"

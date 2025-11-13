@@ -1,7 +1,7 @@
 """Menu views."""
 from django.shortcuts import render
 from django.http import JsonResponse
-from .models import Category, MenuItem
+from .models import Category, MenuItem, MenuAddon
 import json
 
 
@@ -19,11 +19,16 @@ def menu_list(request):
     menu_items = MenuItem.objects.filter(
         is_available=True
     ).select_related('category')
+
+    level_pedas_addons = MenuAddon.objects.filter(type='level_pedas', is_active=True).order_by('display_order', 'name')
+    topping_addons = MenuAddon.objects.filter(type='topping', is_active=True).order_by('display_order', 'name')
     
     context = {
         'categories': categories,
         'best_sellers': best_sellers,
         'menu_items': menu_items,
+        'level_pedas_addons': level_pedas_addons,
+        'topping_addons': topping_addons,
     }
     
     return render(request, 'menu/demo_menu_child.html', context)

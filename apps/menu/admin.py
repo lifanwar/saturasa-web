@@ -1,7 +1,7 @@
 """Menu admin configuration."""
 from django.contrib import admin
 from django.utils.html import format_html
-from .models import Category, MenuItem
+from .models import Category, MenuItem, MenuAddon
 
 
 @admin.register(Category)
@@ -149,3 +149,20 @@ class MenuItemAdmin(admin.ModelAdmin):
         updated = queryset.update(is_available=False)
         self.message_user(request, f'{updated} items marked as unavailable.')
     mark_as_unavailable.short_description = 'Mark selected as Unavailable'
+
+@admin.register(MenuAddon)
+class MenuAddonAdmin(admin.ModelAdmin):
+    list_display = ['name', 'type', 'price', 'display_order', 'is_active']
+    list_filter = ['type', 'is_active']
+    search_fields = ['name']
+    list_editable = ['display_order', 'is_active']
+    ordering = ['type', 'display_order', 'name']
+    
+    fieldsets = (
+        ('Informasi Dasar', {
+            'fields': ('name', 'type', 'price')
+        }),
+        ('Pengaturan', {
+            'fields': ('is_active', 'display_order')
+        })
+    )
