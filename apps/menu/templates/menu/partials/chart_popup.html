@@ -53,13 +53,13 @@
                                     <div class="flex items-center gap-1.5 text-xs min-w-0 flex-1">
                                         <span class="text-green-600 font-bold flex-shrink-0">└</span>
                                         <span class="text-base-content/90 font-medium truncate" x-text="addonGroup.name"></span>
-                                        
+
                                         <!-- Show quantity if > 1 -->
                                         <span x-show="addonGroup.quantity > 1" 
                                               class="text-gray-500 font-medium flex-shrink-0"
                                               x-text="'(' + addonGroup.quantity + 'x)'">
                                         </span>
-                                        
+
                                         <!-- Show total price -->
                                         <span 
                                             x-show="addonGroup.totalPrice > 0" 
@@ -67,7 +67,7 @@
                                             x-text="'+' + formatPrice(addonGroup.totalPrice, item.currency)">
                                         </span>
                                     </div>
-                                    
+
                                     <!-- Topping Quantity Controls (only for topping type) -->
                                     <div x-show="addonGroup.type === 'topping'" class="flex items-center gap-1 flex-shrink-0">
                                         <button 
@@ -76,14 +76,14 @@
                                             title="Kurangi">
                                             <i class="fa-solid fa-minus text-[10px]"></i>
                                         </button>
-                                        
+
                                         <button 
                                             @click="increaseAddonInCart(itemIdx, addonGroup)"
                                             class="btn btn-circle btn-xs btn-ghost hover:bg-green-100 hover:text-green-600 opacity-0 group-hover:opacity-100"
                                             title="Tambah">
                                             <i class="fa-solid fa-plus text-[10px]"></i>
                                         </button>
-                                        
+
                                         <button 
                                             @click="removeAddonGroupFromCart(itemIdx, addonGroup.id)"
                                             class="btn btn-circle btn-xs btn-ghost text-error opacity-0 group-hover:opacity-100 transition-opacity ml-1"
@@ -91,7 +91,7 @@
                                             <i class="fa-solid fa-xmark text-xs"></i>
                                         </button>
                                     </div>
-                                    
+
                                     <!-- Level Pedas Remove Button (single remove) -->
                                     <button 
                                         x-show="addonGroup.type === 'level_pedas'"
@@ -235,6 +235,7 @@
                             </label>
                         </template>
                     </div>
+                    
                 </div>
                 
                 <!-- Extra Topping Section (WITH QUANTITY) -->
