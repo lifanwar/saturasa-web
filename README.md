@@ -39,5 +39,17 @@ project_root/
 
 extract all file in terminal
 
-`find . -type f \( -name "*.py" -o -name "*.html" -o -name "*.txt" -o -name "*.md" \) ! -path "*/__pycache__/*" ! -path "*/migrations/*" ! -name "*.pyc" ! -path "*/.git/*" ! -path "*/venv/*" ! -path "*/env/*" -exec sh -c 'echo "\n########## FILE: {} ##########\n" && cat {} && echo "\n########## END: {} ##########\n"' \; > full_project_export.txt && echo "✅ Done: full_project_export.txt"
-`
+find . -type f \( -name "*.py" -o -name "*.html" -o -name "*.js" -o -name "*.css" -o -name "*.txt" -o -name "*.md" -o -name "*.json" -o -name "*.yml" -o -name "*.yaml" \) \
+! -path "*/__pycache__/*" \
+! -path "*/migrations/*" \
+! -path "*/staticfiles/*" \
+! -path "*/static/*" \
+! -path "*/node_modules/*" \
+! -path "*/.git/*" \
+! -path "*/venv/*" \
+! -path "*/env/*" \
+! -path "*/.venv/*" \
+! -name "*.pyc" \
+! -name "*.min.js" \
+! -name "*.min.css" \
+-exec sh -c 'echo "\n########## FILE: {} ##########\n" && cat {} && echo "\n########## END: {} ##########\n"' \; > full_project_export.txt && echo "✅ Done: full_project_export.txt"
