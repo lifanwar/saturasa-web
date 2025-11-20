@@ -180,3 +180,81 @@ class MenuOrderLog(TenantAwareModel):
     def __str__(self):
         return f"{self.menu_item_name} x{self.quantity} - {self.order_number}"
     
+
+class OrderItemAddon(TenantAwareModel):
+    """Addon yang dipilih untuk setiap OrderItem (snapshot saat order)."""
+    
+    order_item = models.ForeignKey(
+        'OrderItem', 
+        related_name='addons', 
+        on_delete=models.CASCADE
+    )
+    menu_addon = models.ForeignKey(
+        'menu.MenuAddon', 
+        on_delete=models.PROTECT,
+        help_text="Reference ke master addon"
+    )
+    
+    # Snapshot data addon saat order (immutable)
+    name = models.CharField(max_length=100)
+    type = models.CharField(max_length=20)  # level_pedas, topping
+    quantity = models.PositiveIntegerField(default=1)
+    price_amount = models.DecimalField(
+        max_digits=12, 
+        decimal_places=2,
+        validators=[MinValueValidator(0)]
+    )
+    price_currency = models.CharField(max_length=3, default='IDR')
+    
+    class Meta:
+        ordering = ['id']
+        verbose_name = "Order Item Addon"
+        verbose_name_plural = "Order Item Addons"
+    
+    def __str__(self):
+        return f"{self.name} ({self.type}) x{self.quantity} - {self.order_item.menu_item.name}"
+    
+    @property
+    def subtotal(self):
+        """Calculate subtotal untuk addon ini."""
+        return self.price_amount * self.quantity
+
+class AddonOrderLog(TenantAwareModel):
+    """Transaction log for addon analytics - immutable, append-only."""
+    
+    # Order context
+    order_number = models.CharField(max_length=50, db_index=True)
+    order_type = models.CharField(max_length=20)
+    order_channel = models.CharField(max_length=10)
+    
+    # Parent menu info
+    menu_item_id = models.IntegerField(db_index=True)
+    menu_item_name = models.CharField(max_length=200)
+    
+    # Addon info (snapshot)
+    addon_id = models.IntegerField(db_index=True)
+    addon_name = models.CharField(max_length=100)
+    addon_type = models.CharField(max_length=20)
+    
+    quantity = models.IntegerField()
+    price_amount = models.DecimalField(max_digits=12, decimal_places=2)
+    price_currency = models.CharField(max_length=3, default='IDR')
+    subtotal_amount = models.DecimalField(max_digits=12, decimal_places=2)
+    
+    # Time dimensions
+    completed_at = models.DateTimeField(db_index=True)
+    completed_date = models.DateField(db_index=True)
+    completed_year_month = models.CharField(max_length=7, db_index=True)
+    completed_year = models.IntegerField(db_index=True)
+    
+    class Meta:
+        verbose_name_plural = "Addon Order Logs"
+        ordering = ['-completed_at']
+        indexes = [
+            models.Index(fields=['addon_id', 'completed_year_month']),
+            models.Index(fields=['order_number']),
+            models.Index(fields=['addon_type', 'completed_date']),
+        ]
+    
+    def __str__(self):
+        return f"{self.addon_name} x{self.quantity} - {self.order_number}"

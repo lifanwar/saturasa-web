@@ -2,14 +2,15 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.db import transaction
-from .models import Order, OrderItem, OrderTimeline
+from apps.orders.models import Order, OrderItem, OrderTimeline, OrderItemAddon
+from apps.menu.models import MenuAddon
 from .utils import generate_order_number
 from apps.menu.models import MenuItem
 import json
 
 
 def checkout_view(request):
-    """Show checkout page dengan cart items."""
+    """Show checkout page dengan cart items + addons (IDR only)."""
     if request.method == 'POST':
         try:
             cart_data = json.loads(request.POST.get('cart_data', '[]'))
@@ -18,88 +19,95 @@ def checkout_view(request):
                 messages.error(request, 'Cart kosong!')
                 return redirect('menu:menu_list')
             
-            # Save cart to session
             request.session['checkout_cart'] = cart_data
-            
-            # Case 1: User authenticated + has Customer profile (MEMBER)
             if request.user.is_authenticated and hasattr(request.user, 'customer'):
-                # Member checkout - proceed
-                pass  # Lanjutkan ke existing code
-            
-            # Case 2: User authenticated but NO Customer profile (BLOCKING REDIRECT)
+                pass  # lanjut
             elif request.user.is_authenticated and not hasattr(request.user, 'customer'):
                 request.session['checkout_redirect'] = True
-                messages.warning(request, 
-                    'Anda harus mendaftar sebagai member untuk melanjutkan checkout.')
+                messages.warning(request, 'Anda harus mendaftar sebagai member untuk melanjutkan checkout.')
                 return redirect('customers:register_member')
             
-            # Validate & build cart items
             cart_items = []
             total = 0
-            currency = 'IDR'
-            
+
             for item in cart_data:
                 try:
-                    menu_item = MenuItem.objects.get(
-                        id=item['id'],
-                        is_available=True
-                    )
-                    
+                    menu_item = MenuItem.objects.get(id=item['id'], is_available=True)
                     quantity = int(item['quantity'])
                     if quantity <= 0:
                         continue
-                    
-                    # Check stock - BLOCK jika tidak cukup
+
                     if not menu_item.is_unlimited_stock:
                         if menu_item.is_out_of_stock():
-                            messages.error(
-                                request, 
-                                f'❌ {menu_item.name} sudah habis! Silakan hapus dari cart atau pilih menu lain.'
-                            )
+                            messages.error(request, f'❌ {menu_item.name} sudah habis!')
                             return redirect('menu:menu_list')
-                        
                         if menu_item.available_stock < quantity:
-                            messages.error(
-                                request, 
-                                f'❌ Stock {menu_item.name} tidak cukup! Tersedia: {menu_item.available_stock} {menu_item.stock_unit}, Anda pesan: {quantity}. Silakan kurangi jumlah pesanan.'
-                            )
+                            messages.error(request, f'❌ Stock {menu_item.name} tidak cukup! Tersedia: {menu_item.available_stock} {menu_item.stock_unit}, Anda pesan: {quantity}.')
                             return redirect('menu:menu_list')
 
+                    # === ADDONS LOGIC ===
+                    addons_list = []
+                    addons_total = 0
                     
-                    subtotal = menu_item.price_amount * quantity
-                    
+                    addon_details = item.get('addon_details', [])
+                    if addon_details:
+                        addon_ids = [a['id'] for a in addon_details]
+                        addons_objs = MenuAddon.objects.filter(id__in=addon_ids, is_active=True)
+                        addons_map = {a.id: a for a in addons_objs}
+                        for addon_data in addon_details:
+                            addon_id = addon_data['id']
+                            addon_qty = int(addon_data.get('quantity', 1))
+                            if addon_id in addons_map:
+                                addon = addons_map[addon_id]
+                                addon_subtotal = addon.price * addon_qty
+                                addons_total += addon_subtotal
+                                addons_list.append({
+                                    'id': addon.id,
+                                    'name': addon.name,
+                                    'type': addon.type,
+                                    'price': addon.price,
+                                    'quantity': addon_qty,
+                                    'subtotal': addon_subtotal,
+                                })
+                    item_price = menu_item.price_amount + addons_total
+                    subtotal = item_price * quantity
                     cart_items.append({
                         'id': menu_item.id,
                         'name': menu_item.name,
                         'price': menu_item.price_amount,
-                        'currency': menu_item.price_currency,
                         'quantity': quantity,
+                        'addons': addons_list,
+                        'addons_total': addons_total,
+                        'item_price': item_price,
                         'subtotal': subtotal,
                     })
-                    
                     total += subtotal
-                    currency = menu_item.price_currency
-                    
                 except MenuItem.DoesNotExist:
                     continue
             
             if not cart_items:
                 messages.error(request, 'Tidak ada item valid di cart!')
                 return redirect('menu:menu_list')
-            
+
+            cart_data_for_confirm = []
+            for item in cart_items:
+                cart_data_for_confirm.append({
+                    'id': item['id'],
+                    'quantity': item['quantity'],
+                    'addon_details': [
+                        {'id': a['id'], 'quantity': a['quantity']} 
+                        for a in item['addons']
+                    ]
+                })
             context = {
                 'cart_items': cart_items,
                 'total': total,
-                'currency': currency,
-                'cart_data_json': json.dumps([{'id': item['id'], 'quantity': item['quantity']} for item in cart_items])
+                'cart_data_json': json.dumps(cart_data_for_confirm)
             }
-            
             return render(request, 'orders/checkout.html', context)
-        
         except Exception as e:
             messages.error(request, f'Error: {str(e)}')
             return redirect('menu:menu_list')
-    
     return redirect('menu:menu_list')
 
 
@@ -169,23 +177,49 @@ def checkout_confirm(request):
                             id=item['id'],
                             is_available=True
                         )
-                        
                         quantity = int(item['quantity'])
                         if quantity <= 0:
                             continue
-                        
+                        # Hitung base price & addons
+                        base_price = menu_item.price_amount
+                        addons_total = 0
+
+                        # Buat OrderItem dulu (tanpa addons)
                         order_item = OrderItem.objects.create(
                             order=order,
                             menu_item=menu_item,
                             quantity=quantity,
-                            price_amount=menu_item.price_amount,
-                            price_currency=menu_item.price_currency,
+                            price_amount=base_price,
+                            price_currency='IDR',
                         )
-                        
-                        subtotal += order_item.subtotal_amount
-                    
+
+                        # === SIMPAN ADDON ===
+                        for a in item.get('addon_details', []):
+                            try:
+                                addon = MenuAddon.objects.get(id=a['id'], is_active=True)
+                                addon_qty = int(a.get('quantity', 1))
+                                addon_price = addon.price
+                                addons_total += addon_price * addon_qty
+
+                                OrderItemAddon.objects.create(
+                                    order_item=order_item,
+                                    menu_addon=addon,
+                                    name=addon.name,
+                                    type=addon.type,
+                                    quantity=addon_qty,
+                                    price_amount=addon_price,
+                                    price_currency='IDR',
+                                )
+                            except MenuAddon.DoesNotExist:
+                                continue
+                        # Subtotal satu item order: (base + total_addons) x quantity
+                        item_subtotal = (base_price + addons_total) * quantity
+                        order_item.subtotal_amount = item_subtotal
+                        order_item.save()
+                        subtotal += item_subtotal
                     except MenuItem.DoesNotExist:
                         continue
+                    
                 
                 # Update totals
                 order.subtotal_amount = subtotal

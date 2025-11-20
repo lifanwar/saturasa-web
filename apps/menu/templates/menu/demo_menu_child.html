@@ -53,7 +53,7 @@
                         <p class="text-sm text-base-content/70 mb-3">{{ item.description|truncatewords:10 }}</p>
                         <div class="flex justify-between items-center">
                             <span class="text-xl font-bold">{{ item.get_price_display }}</span>
-                            <button @click="quickAddToCart({{ item.id }}, '{{ item.name }}', {{ item.price_amount }}, '{{ item.price_currency }}')" 
+                            <button @click="quickAddToCart({{ item.id }}, '{{ item.name }}', {{ item.price_amount }})" 
                                     class="btn btn-circle btn-sm bg-green-600 hover:bg-green-700 text-white border-0">+</button>
                         </div>
                     </div>
@@ -110,7 +110,7 @@
                     <p class="text-sm text-base-content/70 mb-3">{{ item.description|truncatewords:15 }}</p>
                     <div class="flex justify-between items-center">
                         <span class="text-xl font-bold">{{ item.get_price_display }}</span>
-                        <button @click="quickAddToCart({{ item.id }}, '{{ item.name }}', {{ item.price_amount }}, '{{ item.price_currency }}')" 
+                        <button @click="quickAddToCart({{ item.id }}, '{{ item.name }}', {{ item.price_amount }})"
                                 class="btn btn-circle btn-sm bg-green-600 hover:bg-green-700 text-white border-0">+</button>
                     </div>
                 </div>
@@ -124,321 +124,217 @@
 
 {% block extra_js %}
 <script>
-    function menuApp() {
-        return {
-          // State
+  function menuApp() {
+      return {
+          // --- State dasar ---
           cart: [],
           showCart: false,
           showAddonModal: false,
-          filterCategory: "all",
-          currentItem: null,
-          selectedAddons: { level_pedas: null, toppings: {} },
+          filterCategory: 'all',
+          currentItem: {},
+          modalAddons: [],
           isEditMode: false,
-          editItemIndex: null,
-      
-          // Cart Operations
-          quickAddToCart(id, name, price, currency) {
-            const idx = this.cart.findIndex(item => item.id === id && item.addons.length === 0);
-            if (idx !== -1) {
-              this.cart[idx].quantity += 1;
-            } else {
-              this.cart.push({
-                id, name,
-                base_price: Number(price) || 0,
-                currency,
-                quantity: 1,
-                addons: []
-              });
-            }
-            this.showCart = true;
+          editItemIdx: null,
+  
+          // --- Untuk menampilkan badge/total cart ---
+          get totalItems() {
+              return this.cart.reduce((sum, i) => sum + i.quantity, 0)
           },
+          get formattedTotal() {
+              return this.formatPrice(this.cart.reduce((a, b) => a + this.calculateItemTotal(b) * b.quantity, 0))
+          },
+          get cartDataJson() {
+              // Untuk form checkout Django
+              return JSON.stringify(this.cart.map(item => ({
+                  id: item.id,
+                  quantity: item.quantity,
+                  addon_details: (item.addons || []).map(a => ({
+                      id: a.id,
+                      quantity: Number(a.quantity) || 1
+                  }))
+              })))
+          },
+  
+          // --- Click action menambah ke cart secara cepat (tanpa addon) ---
+          quickAddToCart(id, name, base_price) {
+              // Kalau sudah ada di cart & belum ada addon, tambah qty
+              let idx = this.cart.findIndex(i => i.id === id && (!i.addons || i.addons.length === 0))
+              if (idx !== -1) {
+                  this.cart[idx].quantity += 1
+              } else {
+                  this.cart.push({
+                      id,
+                      name,
+                      base_price,
+                      quantity: 1,
+                      addons: []
+                  })
+              }
+          },
+  
+          // --- Semua fungsi pengelolaan Cart ---
           removeFromCart(idx) {
-            this.cart.splice(idx, 1);
-            if (this.cart.length === 0) this.showCart = false;
+              this.cart.splice(idx, 1)
           },
-          increaseQuantity(idx) { 
-            this.cart[idx].quantity += 1; 
+          increaseQuantity(idx) {
+              this.cart[idx].quantity++
           },
           decreaseQuantity(idx) {
-            if (this.cart[idx].quantity > 1) {
-              this.cart[idx].quantity -= 1;
-            } else {
-              this.removeFromCart(idx);
-            }
+              if (this.cart[idx].quantity > 1) this.cart[idx].quantity--
+              else this.removeFromCart(idx)
           },
-      
-          // Addon Modal Logic
-          openAddonModalForNew(id, name, price, currency) {
-            this.isEditMode = false;
-            this.editItemIndex = null;
-            this.currentItem = { id, name, base_price: Number(price) || 0, currency };
-            this.selectedAddons = { level_pedas: null, toppings: {} };
-            this.showAddonModal = true;
+  
+          // --- Penghitungan Total ---
+          formatPrice(val) {
+              if (!val) val = 0
+              // Ubah sesuai currency (IDR)
+              return 'Rp' + Number(val).toLocaleString('id-ID')
           },
-          openAddonModalForEdit(idx) {
-            this.isEditMode = true;
-            this.editItemIndex = idx;
-            const item = this.cart[idx];
-            this.currentItem = { ...item };
-            
-            // Rebuild selectedAddons from cart item addons
-            this.selectedAddons = { level_pedas: null, toppings: {} };
-            
-            // Group topping by id and sum quantity
-            const toppingMap = {};
-            item.addons?.forEach(addon => {
-              if (addon.type === "level_pedas") {
-                this.selectedAddons.level_pedas = { ...addon };
+          calculateItemTotal(item) {
+              // base_price + total addon per qty
+              let addonsTotal = 0
+              if (item.addons && item.addons.length) {
+                  addonsTotal = item.addons.reduce((s, a) => s + (a.price || 0) * (Number(a.quantity) || 1), 0)
               }
-              if (addon.type === "topping") {
-                if (!toppingMap[addon.id]) {
-                  toppingMap[addon.id] = { ...addon, quantity: 0 };
-                }
-                toppingMap[addon.id].quantity += Number(addon.quantity) || 1;
-              }
-            });
-            
-            this.selectedAddons.toppings = toppingMap;
-            this.showAddonModal = true;
+              return (item.base_price || 0) + addonsTotal
           },
+  
+          // --- OPEN MODAL UNTUK ADDON ---
+          openAddonModalForEdit(itemIdx) {
+              this.isEditMode = true
+              this.editItemIdx = itemIdx
+              // clone data item di cart, agar data original tidak ikut berubah
+              const item = this.cart[itemIdx]
+              this.currentItem = {
+                  id: item.id,
+                  name: item.name,
+                  base_price: item.base_price,
+                  addons: JSON.parse(JSON.stringify(item.addons || []))
+              }
+              this.showAddonModal = true
+          },
+  
+          // --- Fungsi MODAL Addon ---
           closeAddonModal() {
-            this.showAddonModal = false;
-            this.currentItem = null;
-            this.selectedAddons = { level_pedas: null, toppings: {} };
-            this.isEditMode = false; 
-            this.editItemIndex = null;
+              this.showAddonModal = false
+              this.isEditMode = false
+              this.editItemIdx = null
+              this.currentItem = {}
           },
-      
-          // Addon Selection
-          selectAddon(type, option, single = false) {
-            option.price = Number(option.price) || 0;
-            if (type === "level_pedas") {
-              this.selectedAddons.level_pedas = { ...option };
-            }
-            if (type === "topping") {
-              const id = option.id;
-              if (!this.selectedAddons.toppings[id]) {
-                this.selectedAddons.toppings[id] = { ...option, quantity: 1 };
+          selectAddon(type, addonObj, isRadio = false) {
+              // Level pedas, hanya satu (radio)
+              if (!this.currentItem.addons) this.currentItem.addons = []
+              if (isRadio) {
+                  // Remove addon lama type ini
+                  this.currentItem.addons = this.currentItem.addons.filter(a => a.type !== type)
+                  this.currentItem.addons.push({...addonObj, quantity: 1})
               }
-            }
           },
           isAddonSelected(type, id) {
-            if (type === "level_pedas") return this.selectedAddons.level_pedas?.id === id;
-            if (type === "topping") return this.selectedAddons.toppings[id]?.quantity > 0;
-            return false;
+              return !!(this.currentItem.addons || []).find(a => a.type === type && a.id === id)
           },
-      
-          // Addon Quantity Controls (Modal)
+          // Topping: boleh banyak, quantity disimpan
           getToppingQuantity(id) {
-            return this.selectedAddons.toppings[id]?.quantity || 0;
+              if (!(this.currentItem && this.currentItem.addons)) return 0
+              let found = this.currentItem.addons.find(a => a.type === 'topping' && a.id === id)
+              return found ? Number(found.quantity) : 0
           },
-          increaseToppingQuantity(option) {
-            const id = option.id;
-            if (this.selectedAddons.toppings[id]) {
-              this.selectedAddons.toppings[id].quantity += 1;
-            } else {
-              this.selectedAddons.toppings[id] = { 
-                ...option, 
-                quantity: 1, 
-                price: Number(option.price) || 0 
-              };
-            }
+          increaseToppingQuantity(addonObj) {
+              if (!this.currentItem.addons) this.currentItem.addons = []
+              let f = this.currentItem.addons.find(
+                  a => a.type === 'topping' && a.id === addonObj.id
+              )
+              if (f) f.quantity += 1
+              else this.currentItem.addons.push({...addonObj, quantity: 1})
           },
-          decreaseToppingQuantity(option) {
-            const id = option.id;
-            if (this.selectedAddons.toppings[id]?.quantity > 1) {
-              this.selectedAddons.toppings[id].quantity -= 1;
-            } else {
-              delete this.selectedAddons.toppings[id];
-            }
+          decreaseToppingQuantity(addonObj) {
+              if (!this.currentItem.addons) return
+              let f = this.currentItem.addons.find(a => a.type === 'topping' && a.id === addonObj.id)
+              if (f) {
+                  if (f.quantity > 1) f.quantity -= 1
+                  else this.currentItem.addons = this.currentItem.addons.filter(a => !(a.type === 'topping' && a.id === addonObj.id))
+              }
           },
-      
-          // Confirm Addons Modal
+  
+          // --- CONFIRM MODAL : Menambah/mengupdate item di cart ---
           confirmAddons() {
-            const addonsArr = [];
-            
-            // Add level pedas (always qty 1)
-            if (this.selectedAddons.level_pedas) {
-              addonsArr.push({ 
-                ...this.selectedAddons.level_pedas, 
-                type: "level_pedas", 
-                quantity: 1 
-              });
-            }
-            
-            // Add toppings with their quantities
-            Object.values(this.selectedAddons.toppings).forEach(t => {
-              addonsArr.push({ 
-                ...t, 
-                type: "topping", 
-                quantity: Number(t.quantity) || 1 
-              });
-            });
-            
-            if (this.isEditMode && this.editItemIndex !== null) {
-              this.cart[this.editItemIndex].addons = addonsArr;
-            } else {
-              this.cart.push({
-                ...this.currentItem,
-                quantity: 1,
-                addons: addonsArr
-              });
-            }
-            
-            this.closeAddonModal();
-            this.showCart = true;
-          },
-      
-          // Cart Addon Controls
-          getGroupedAddons(addons) {
-            const groups = [];
-            const toppingMap = {};
-            
-            addons?.forEach(addon => {
-              if (addon.type === "level_pedas") {
-                groups.push({
-                  id: addon.id,
-                  name: addon.name,
-                  type: "level_pedas",
-                  quantity: 1,
-                  price: Number(addon.price) || 0,
-                  totalPrice: Number(addon.price) || 0
-                });
-              }
-              if (addon.type === "topping") {
-                if (!toppingMap[addon.id]) {
-                  toppingMap[addon.id] = { 
-                    ...addon, 
-                    quantity: 0, 
-                    totalPrice: 0 
-                  };
-                }
-                const qty = Number(addon.quantity) || 1;
-                const price = Number(addon.price) || 0;
-                toppingMap[addon.id].quantity += qty;
-                toppingMap[addon.id].totalPrice += price * qty;
-              }
-            });
-            
-            return [ ...groups, ...Object.values(toppingMap) ];
-          },
-          
-          decreaseAddonInCart(itemIdx, groupId) {
-            const item = this.cart[itemIdx];
-            const addonIdx = item.addons.findIndex(a => a.id === groupId && a.type === "topping");
-            
-            if (addonIdx !== -1) {
-              const addon = item.addons[addonIdx];
-              if (addon.quantity > 1) {
-                addon.quantity -= 1;
+              if (this.isEditMode) {
+                  // Update item cart secara replace
+                  this.cart[this.editItemIdx].addons = JSON.parse(JSON.stringify(this.currentItem.addons || []))
               } else {
-                item.addons.splice(addonIdx, 1);
+                  // Saat bukan edit, tambah item baru
+                  this.cart.push({
+                      id: this.currentItem.id,
+                      name: this.currentItem.name,
+                      base_price: this.currentItem.base_price,
+                      quantity: 1,
+                      addons: JSON.parse(JSON.stringify(this.currentItem.addons || []))
+                  })
               }
-            }
+              this.closeAddonModal()
           },
-          
+  
+          // --- Grouping addon di cart view (untuk tampilan di popup) ---
+          getGroupedAddons(addons) {
+              // Untuk menampilkan di cart dalam grouped, by id
+              if (!addons) return []
+              // Grouping + summary quantity & total price (addon.Group = {id, name, ...})
+              const groups = []
+              addons.forEach(a => {
+                  let g = groups.find(g => g.id === a.id)
+                  if (g) {
+                      g.quantity += Number(a.quantity) || 1
+                      g.totalPrice += (Number(a.price) || 0) * (Number(a.quantity) || 1)
+                  } else {
+                      groups.push({
+                          id: a.id,
+                          name: a.name,
+                          type: a.type,
+                          quantity: Number(a.quantity) || 1,
+                          totalPrice: (Number(a.price) || 0) * (Number(a.quantity) || 1)
+                      })
+                  }
+              })
+              return groups
+          },
+  
+          // Untuk tombol + — pada group topping di cart
           increaseAddonInCart(itemIdx, addonGroup) {
-            const item = this.cart[itemIdx];
-            const existingIdx = item.addons.findIndex(a => a.id === addonGroup.id && a.type === "topping");
-            
-            if (existingIdx !== -1) {
-              item.addons[existingIdx].quantity += 1;
-            } else {
-              item.addons.push({
-                id: addonGroup.id,
-                name: addonGroup.name,
-                price: Number(addonGroup.totalPrice) / Number(addonGroup.quantity) || 0,
-                type: "topping",
-                quantity: 1
-              });
-            }
+              let item = this.cart[itemIdx]
+              let all = item.addons || []
+              // Cari index group by id/type
+              let found = all.find(a => a.id === addonGroup.id && a.type === 'topping')
+              if (found) found.quantity += 1
           },
-          
-          removeAddonGroupFromCart(itemIdx, groupId) {
-            const item = this.cart[itemIdx];
-            item.addons = item.addons.filter(a => a.id !== groupId);
+          decreaseAddonInCart(itemIdx, addonId) {
+              let item = this.cart[itemIdx]
+              let found = (item.addons || []).find(a => a.id === addonId)
+              if (found && found.quantity > 1) found.quantity -= 1
+              else {
+                  item.addons = item.addons.filter(a => a.id !== addonId)
+              }
           },
-      
-          // Calculation Utilities
+          removeAddonGroupFromCart(itemIdx, addonId) {
+              let item = this.cart[itemIdx]
+              item.addons = (item.addons || []).filter(a => a.id !== addonId)
+          },
+  
+          // Fungsi untuk modal summary saat addon modal
           calculateModalTotal() {
-            let total = Number(this.currentItem?.base_price) || 0;
-            
-            if (this.selectedAddons.level_pedas) {
-              total += Number(this.selectedAddons.level_pedas.price) || 0;
-            }
-            
-            Object.values(this.selectedAddons.toppings).forEach(t => {
-              total += (Number(t.price) || 0) * (Number(t.quantity) || 1);
-            });
-            
-            return total;
+              let total = this.currentItem.base_price || 0
+              if (this.currentItem.addons) {
+                  total += this.currentItem.addons.reduce((s, a) => s + (a.price || 0) * (Number(a.quantity) || 1), 0)
+              }
+              return total
           },
-          
-          calculateItemTotal(item) {
-            let total = Number(item.base_price) || 0;
-            
-            if (item.addons?.length > 0) {
-              total += item.addons.reduce((sum, addon) => {
-                const price = Number(addon.price) || 0;
-                const qty = Number(addon.quantity) || 1;
-                return sum + (price * qty);
-              }, 0);
-            }
-            
-            return total;
-          },
-          
-          formatPrice(amount, currency) {
-            amount = Number(amount) || 0;
-            if (currency === "IDR") return "Rp " + amount.toLocaleString("id-ID");
-            if (currency === "EGP") return "EGP " + amount.toFixed(2);
-            return currency + " " + amount;
-          },
-      
-          // Computed Props
-          get totalPrice() {
-            return this.cart.reduce((sum, item) => {
-              const itemTotal = this.calculateItemTotal(item);
-              const qty = Number(item.quantity) || 1;
-              return sum + (itemTotal * qty);
-            }, 0);
-          },
-          
-          get formattedTotal() {
-            if (this.cart.length > 0) {
-              return this.formatPrice(this.totalPrice, this.cart[0].currency);
-            }
-            return this.formatPrice(0, "IDR");
-          },
-          
-          get totalItems() {
-            return this.cart.reduce((sum, item) => sum + (Number(item.quantity) || 1), 0);
-          },
-          
-          get cartDataJson() {
-            return JSON.stringify(this.cart.map(item => ({
-              id: item.id,
-              quantity: item.quantity,
-              addon_details: item.addons?.map(a => ({
-                id: a.id,
-                quantity: Number(a.quantity) || 1
-              })) || []
-            })));
-          },
-          
+  
+          // --- Submission checkout (serialize JSON ke hidden input) ---
           prepareCheckout(e) {
-            if (this.cart.length === 0) {
-              e.preventDefault();
-              alert("Cart kosong!");
-              return;
-            }
-            console.log("Cart data:", this.cartDataJson);
-          }
-        };
+              // Opsi: validasi cart di sini
+              // this.cartDataJson sudah otomatis update
+          },
       }
-      
-      
-</script>
-
+  }
+  </script>  
 
 {% endblock %}

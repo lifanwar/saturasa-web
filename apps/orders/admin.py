@@ -2,7 +2,7 @@
 from django.contrib import admin
 from django.utils.html import format_html
 from django.db.models import Sum
-from .models import Order, OrderItem, OrderTimeline, CustomerAnalytics, MenuOrderLog
+from apps.orders.models import Order, OrderItem, OrderTimeline, CustomerAnalytics, MenuOrderLog, OrderItemAddon, AddonOrderLog
 from decimal import Decimal
 # from .analytics import MenuAnalytics
 
@@ -12,8 +12,22 @@ class OrderItemInline(admin.TabularInline):
     """Inline untuk OrderItem di Order admin."""
     model = OrderItem
     extra = 0
-    fields = ['menu_item', 'quantity', 'price_amount', 'price_currency', 'subtotal_amount', 'notes']
-    readonly_fields = ['subtotal_amount']
+    fields = ['menu_item', 'quantity', 'price_amount', 'price_currency', 'subtotal_amount', 'addon_summary', 'notes']
+    readonly_fields = ['subtotal_amount', 'addon_summary']
+    
+    def addon_summary(self, obj):
+        """Display ringkasan addon untuk item ini."""
+        if obj and obj.pk:
+            addons = obj.addons.all()
+            if addons:
+                addon_list = []
+                for addon in addons:
+                    addon_list.append(f"• {addon.name} ({addon.type}) x{addon.quantity} = Rp {addon.subtotal:,.0f}")
+                return format_html('<br>'.join(addon_list))
+            return "-"
+        return "-"
+    addon_summary.short_description = 'Addons'
+
 
 
 class OrderTimelineInline(admin.TabularInline):
@@ -404,6 +418,121 @@ class MenuOrderLogAdmin(admin.ModelAdmin):
     subtotal_display.short_description = 'Subtotal'
     subtotal_display.admin_order_field = 'subtotal_amount'
 
+    def has_add_permission(self, request):
+        """Disable manual add (auto-created via signal)."""
+        return False
+    
+    def has_change_permission(self, request, obj=None):
+        """Disable edit (immutable log)."""
+        return False
+    
+    def has_delete_permission(self, request, obj=None):
+        """Allow delete only for superuser (cleanup old data)."""
+        return request.user.is_superuser
+
+class OrderItemAddonInline(admin.TabularInline):
+    """Inline untuk OrderItemAddon di OrderItem admin."""
+    model = OrderItemAddon
+    extra = 0
+    fields = ['menu_addon', 'name', 'type', 'quantity', 'price_amount', 'price_currency', 'subtotal_display']
+    readonly_fields = ['subtotal_display']
+    
+    def subtotal_display(self, obj):
+        """Display subtotal dengan format IDR."""
+        if obj and obj.price_amount:
+            return f"Rp {obj.subtotal:,.0f}"
+        return "-"
+    subtotal_display.short_description = 'Subtotal'
+
+
+@admin.register(OrderItemAddon)
+class OrderItemAddonAdmin(admin.ModelAdmin):
+    """Admin untuk OrderItemAddon model."""
+    
+    list_display = ['order_item', 'name', 'type', 'quantity', 'price_display', 'subtotal_display', 'created_at']
+    list_filter = ['type', 'created_at']
+    search_fields = ['order_item__order__order_number', 'name', 'order_item__menu_item__name']
+    ordering = ['-created_at']
+    
+    fieldsets = (
+        ('Order Item Info', {
+            'fields': ('order_item', 'menu_addon')
+        }),
+        ('Addon Details (Snapshot)', {
+            'fields': ('name', 'type', 'quantity', 'price_amount', 'price_currency')
+        }),
+        ('System', {
+            'fields': ('restaurant_id',),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    readonly_fields = ['order_item', 'menu_addon', 'name', 'type', 'quantity', 'price_amount', 'price_currency']
+    
+    def price_display(self, obj):
+        return f"Rp {obj.price_amount:,.0f}"
+    price_display.short_description = 'Price'
+    
+    def subtotal_display(self, obj):
+        return f"Rp {obj.subtotal:,.0f}"
+    subtotal_display.short_description = 'Subtotal'
+    
+    def has_add_permission(self, request):
+        """Disable manual add (created via checkout)."""
+        return False
+    
+    def has_change_permission(self, request, obj=None):
+        """Disable edit (immutable snapshot)."""
+        return False
+    
+    def has_delete_permission(self, request, obj=None):
+        """Allow delete only for superuser."""
+        return request.user.is_superuser
+
+@admin.register(AddonOrderLog)
+class AddonOrderLogAdmin(admin.ModelAdmin):
+    """Admin untuk Addon Order Log."""
+    
+    list_display = ['order_number', 'menu_item_name', 'addon_name', 'addon_type', 'quantity', 'subtotal_display', 'completed_date']
+    list_filter = ['completed_year_month', 'addon_type', 'order_type', 'order_channel', 'completed_date']
+    search_fields = ['order_number', 'addon_name', 'menu_item_name']
+    ordering = ['-completed_at']
+    date_hierarchy = 'completed_date'
+    
+    fieldsets = (
+        ('Order Info', {
+            'fields': ('order_number', 'order_type', 'order_channel')
+        }),
+        ('Menu Info', {
+            'fields': ('menu_item_id', 'menu_item_name')
+        }),
+        ('Addon Info', {
+            'fields': ('addon_id', 'addon_name', 'addon_type')
+        }),
+        ('Transaction', {
+            'fields': ('quantity', 'price_amount', 'price_currency', 'subtotal_amount')
+        }),
+        ('Time Dimensions', {
+            'fields': ('completed_at', 'completed_date', 'completed_year_month', 'completed_year')
+        }),
+    )
+    
+    readonly_fields = [
+        'order_number', 'order_type', 'order_channel',
+        'menu_item_id', 'menu_item_name',
+        'addon_id', 'addon_name', 'addon_type',
+        'quantity', 'price_amount', 'price_currency', 'subtotal_amount',
+        'completed_at', 'completed_date', 'completed_year_month', 'completed_year'
+    ]
+    
+    def subtotal_display(self, obj):
+        """Format subtotal dengan currency."""
+        if obj.price_currency == 'IDR':
+            return f"Rp {obj.subtotal_amount:,.0f}"
+        return f"{obj.price_currency} {obj.subtotal_amount:,.2f}"
+    subtotal_display.short_description = 'Subtotal'
+    subtotal_display.admin_order_field = 'subtotal_amount'
+    
     def has_add_permission(self, request):
         """Disable manual add (auto-created via signal)."""
         return False

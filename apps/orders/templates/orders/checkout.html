@@ -18,48 +18,66 @@
         <div class="card bg-base-100 shadow-xl">
             <div class="card-body">
                 <h2 class="card-title mb-4">📋 Ringkasan Pesanan</h2>
-                
                 <div class="space-y-3">
                     {% for item in cart_items %}
-                    <div class="flex justify-between items-start py-3 border-b border-base-200">
-                        <div class="flex-1">
-                            <p class="font-semibold">{{ item.name }}</p>
-                            <p class="text-sm text-base-content/60">
-                                {% if item.currency == 'IDR' %}
+                    <div class="py-3 border-b border-base-200">
+                        <div class="flex justify-between items-start mb-1">
+                            <div class="flex-1">
+                                <p class="font-semibold">{{ item.name }}</p>
+                                <p class="text-sm text-base-content/60">
                                     Rp {{ item.price|floatformat:0 }}
-                                {% else %}
-                                    {{ item.currency }} {{ item.price|floatformat:2 }}
-                                {% endif %}
-                                × {{ item.quantity }}
-                            </p>
-                        </div>
-                        <div class="text-right">
-                            <p class="font-bold">
-                                {% if item.currency == 'IDR' %}
+                                    {% if item.addons %}
+                                        <span class="text-green-600 font-semibold">
+                                            + Addons (Rp {{ item.addons_total|floatformat:0 }})
+                                        </span>
+                                    {% endif %}
+                                </p>
+                            </div>
+                            <div class="text-right">
+                                <p class="font-bold">
                                     Rp {{ item.subtotal|floatformat:0 }}
-                                {% else %}
-                                    {{ item.currency }} {{ item.subtotal|floatformat:2 }}
-                                {% endif %}
-                            </p>
+                                </p>
+                                <p class="text-xs text-base-content/50">
+                                    {{ item.quantity }}x
+                                </p>
+                            </div>
                         </div>
+                        
+                        {% if item.addons %}
+                        <div class="ml-4 mt-2 space-y-1 border-l-2 border-green-400 pl-3">
+                            {% for addon in item.addons %}
+                            <div class="flex justify-between items-center text-xs text-base-content/70">
+                                <div class="flex items-center gap-1">
+                                    <span class="text-green-600">└</span>
+                                    <span>{{ addon.name }}</span>
+                                    {% if addon.quantity > 1 %}
+                                        <span class="font-semibold">({{ addon.quantity }}x)</span>
+                                    {% endif %}
+                                </div>
+                                <span class="text-green-600 font-semibold">
+                                    {% if addon.price > 0 %}
+                                        +Rp {{ addon.subtotal|floatformat:0 }}
+                                    {% else %}
+                                        Gratis
+                                    {% endif %}
+                                </span>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
                     </div>
                     {% endfor %}
                 </div>
-                
                 <div class="divider"></div>
-                
                 <div class="flex justify-between items-center text-xl font-bold">
                     <span>Total:</span>
                     <span class="text-success">
-                        {% if currency == 'IDR' %}
-                            Rp {{ total|floatformat:0 }}
-                        {% else %}
-                            {{ currency }} {{ total|floatformat:2 }}
-                        {% endif %}
+                        Rp {{ total|floatformat:0 }}
                     </span>
                 </div>
             </div>
         </div>
+        
 
         <!-- Right: Customer Form -->
         <div class="card bg-base-100 shadow-xl">

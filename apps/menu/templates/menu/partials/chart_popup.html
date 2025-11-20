@@ -37,7 +37,7 @@
                     <div class="flex justify-between items-start mb-2">
                         <div class="flex-1 min-w-0 pr-2">
                             <p class="font-semibold text-sm truncate" x-text="item.name"></p>
-                            <p class="text-xs text-base-content/60" x-text="formatPrice(item.base_price, item.currency)"></p>
+                            <p class="text-xs text-base-content/60" x-text="formatPrice(item.base_price)"></p>
                         </div>
                         <button @click="removeFromCart(itemIdx)" 
                                 class="btn btn-circle btn-xs btn-ghost text-error flex-shrink-0">
@@ -64,7 +64,7 @@
                                         <span 
                                             x-show="addonGroup.totalPrice > 0" 
                                             class="text-green-600 font-semibold flex-shrink-0 text-[10px] sm:text-xs"
-                                            x-text="'+' + formatPrice(addonGroup.totalPrice, item.currency)">
+                                            x-text="'+' + formatPrice(addonGroup.totalPrice)">
                                         </span>
                                     </div>
 
@@ -125,11 +125,11 @@
                         </div>
                         <div class="text-right">
                             <div class="text-[10px] text-base-content/50" x-show="item.quantity > 1">
-                                <span x-text="formatPrice(calculateItemTotal(item), item.currency)"></span>
+                                <span x-text="formatPrice(calculateItemTotal(item))"></span>
                                 <span> × </span>
                                 <span x-text="item.quantity"></span>
                             </div>
-                            <div class="font-bold text-sm text-green-700" x-text="formatPrice(calculateItemTotal(item) * item.quantity, item.currency)"></div>
+                            <div class="font-bold text-sm text-green-700" x-text="formatPrice(calculateItemTotal(item) * item.quantity)"></div>
                         </div>
                     </div>
                 </div>
@@ -183,7 +183,7 @@
                             <span x-text="currentItem.name"></span>
                         </h3>
                         <p class="text-sm text-gray-600 mt-1">
-                            <span class="font-semibold text-green-600" x-text="formatPrice(currentItem.base_price, currentItem.currency)"></span>
+                            <span class="font-semibold text-green-600" x-text="formatPrice(currentItem.base_price)"></span>
                             <span class="text-xs ml-1">Harga dasar</span>
                         </p>
                     </div>
@@ -308,7 +308,7 @@
                          class="mt-2 pt-2 border-t border-yellow-200 flex justify-between text-xs">
                         <span class="text-gray-600">Subtotal:</span>
                         <span class="font-bold text-green-600" 
-                              x-text="formatPrice({{ addon.price|floatformat:0 }} * getToppingQuantity({{ addon.id }}), currentItem.currency)">
+                              x-text="formatPrice({{ addon.price|floatformat:0 }} * getToppingQuantity({{ addon.id }}))">
                         </span>
                     </div>
                 </div>
@@ -325,11 +325,11 @@
                 <div class="flex items-center justify-between mb-3 p-3 bg-green-100 rounded-lg">
                     <div>
                         <p class="text-xs text-gray-600">Total Pesanan</p>
-                        <p class="text-2xl font-bold text-green-700" x-text="formatPrice(calculateModalTotal(), currentItem.currency)"></p>
+                        <p class="text-2xl font-bold text-green-700" x-text="formatPrice(calculateModalTotal())"></p>
                     </div>
                     <div class="text-right text-xs text-gray-600">
-                        <p>Base: <span x-text="formatPrice(currentItem.base_price, currentItem.currency)"></span></p>
-                        <p>Addons: <span class="font-semibold text-green-600" x-text="formatPrice(calculateModalTotal() - currentItem.base_price, currentItem.currency)"></span></p>
+                        <p>Base: <span x-text="formatPrice(currentItem.base_price)"></span></p>
+                        <p>Addons: <span class="font-semibold text-green-600" x-text="formatPrice(calculateModalTotal() - currentItem.base_price)"></span></p>
                     </div>
                 </div>
                 
