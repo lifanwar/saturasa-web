@@ -7,6 +7,7 @@ from apps.menu.models import MenuAddon
 from .utils import generate_order_number
 from apps.menu.models import MenuItem
 import json
+from decimal import Decimal
 
 
 def checkout_view(request):
@@ -111,8 +112,9 @@ def checkout_view(request):
     return redirect('menu:menu_list')
 
 
+
 def checkout_confirm(request):
-    """Process order confirmation - NO stock action at PENDING."""
+    """Process order confirmation with security validation."""
     if request.method == 'POST':
         try:
             with transaction.atomic():
@@ -120,42 +122,38 @@ def checkout_confirm(request):
                 order_type = request.POST.get('order_type')
 
                 cart_data_raw = request.POST.get('cart_data', '[]')
-                # Cek apakah dari session atau POST
                 if cart_data_raw == '[]' and 'checkout_cart' in request.session:
                     cart_data = request.session.get('checkout_cart')
                 else:
                     cart_data = json.loads(cart_data_raw)
                 
-                # Check if user is member - override customer_name
                 customer = None
-                
-                # Case 1: User logged in (member or not member)
                 if request.user.is_authenticated:
-                    # Use authenticated user's name/email
                     if hasattr(request.user, 'customer'):
-                        # User is member - use Customer name
                         customer = request.user.customer
                         customer_name = customer.name
                     else:
-                        # User logged in but not member yet - use email/username
                         customer_name = request.user.get_full_name() or request.user.email.split('@')[0]
                 
-                # Case 2: Guest (not logged in) - use input from form
-                
-                # Validation
+                # === VALIDATION ===
                 if not customer_name:
                     messages.error(request, 'Nama wajib diisi!')
                     return redirect('menu:menu_list')
                 
-                if order_type not in ['DINE_IN', 'TAKEAWAY']:
+                if order_type not in ['DINE_IN', 'TAKEAWAY', 'DELIVERY']:
                     messages.error(request, 'Tipe order tidak valid!')
                     return redirect('menu:menu_list')
                 
-                if not cart_data:
+                if not cart_data or len(cart_data) == 0:
                     messages.error(request, 'Cart kosong!')
                     return redirect('menu:menu_list')
                 
-                # Create Order (PENDING - no stock action)
+                # === SECURITY: Limit cart size ===
+                if len(cart_data) > 50:  # Max 50 items per order
+                    messages.error(request, 'Terlalu banyak item dalam cart!')
+                    return redirect('menu:menu_list')
+                
+                # Create Order
                 order = Order.objects.create(
                     order_number=generate_order_number(),
                     customer=customer, 
@@ -169,22 +167,31 @@ def checkout_confirm(request):
                     total_currency='IDR',
                 )
                 
-                # Create Order Items (no stock reservation)
-                subtotal = 0
+                subtotal = Decimal('0')
+                
                 for item in cart_data:
                     try:
+                        # === VALIDATE ITEM ===
                         menu_item = MenuItem.objects.get(
                             id=item['id'],
                             is_available=True
                         )
+                        
                         quantity = int(item['quantity'])
+                        
+                        # === SECURITY: Validate quantity ===
                         if quantity <= 0:
                             continue
-                        # Hitung base price & addons
-                        base_price = menu_item.price_amount
-                        addons_total = 0
+                        if quantity > 100:  # Max 100 per item
+                            messages.error(request, f'Quantity {menu_item.name} terlalu besar (max 100)!')
+                            order.delete()
+                            return redirect('menu:menu_list')
+                        
+                        # Get base price FROM DATABASE (never trust frontend)
+                        base_price = Decimal(str(menu_item.price_amount))
+                        addons_total = Decimal('0')
 
-                        # Buat OrderItem dulu (tanpa addons)
+                        # Create OrderItem
                         order_item = OrderItem.objects.create(
                             order=order,
                             menu_item=menu_item,
@@ -193,13 +200,36 @@ def checkout_confirm(request):
                             price_currency='IDR',
                         )
 
-                        # === SIMPAN ADDON ===
-                        for a in item.get('addon_details', []):
+                        # === VALIDATE & SAVE ADDONS ===
+                        addon_details = item.get('addon_details', [])
+                        
+                        # Security: Limit addon count
+                        if len(addon_details) > 20:
+                            messages.error(request, 'Terlalu banyak addon per item!')
+                            order.delete()
+                            return redirect('menu:menu_list')
+                        
+                        for a in addon_details:
                             try:
-                                addon = MenuAddon.objects.get(id=a['id'], is_active=True)
+                                addon = MenuAddon.objects.get(
+                                    id=a['id'], 
+                                    is_active=True
+                                )
+                                
                                 addon_qty = int(a.get('quantity', 1))
-                                addon_price = addon.price
-                                addons_total += addon_price * addon_qty
+                                
+                                # === SECURITY: Validate addon quantity ===
+                                if addon_qty <= 0:
+                                    continue
+                                if addon_qty > 50:  # Max 50 per addon
+                                    messages.error(request, f'Quantity addon {addon.name} terlalu besar!')
+                                    order.delete()
+                                    return redirect('menu:menu_list')
+                                
+                                # Get addon price FROM DATABASE
+                                addon_price = Decimal(str(addon.price))
+                                addon_subtotal = addon_price * addon_qty
+                                addons_total += addon_subtotal
 
                                 OrderItemAddon.objects.create(
                                     order_item=order_item,
@@ -210,16 +240,24 @@ def checkout_confirm(request):
                                     price_amount=addon_price,
                                     price_currency='IDR',
                                 )
-                            except MenuAddon.DoesNotExist:
+                            except (MenuAddon.DoesNotExist, ValueError, KeyError):
                                 continue
-                        # Subtotal satu item order: (base + total_addons) x quantity
+                        
+                        # Calculate subtotal: (base + addons) * quantity
                         item_subtotal = (base_price + addons_total) * quantity
                         order_item.subtotal_amount = item_subtotal
                         order_item.save()
+                        
                         subtotal += item_subtotal
-                    except MenuItem.DoesNotExist:
+                        
+                    except (MenuItem.DoesNotExist, ValueError, KeyError):
                         continue
-                    
+                
+                # === SECURITY: Final validation ===
+                if subtotal <= 0:
+                    messages.error(request, 'Total order tidak valid!')
+                    order.delete()
+                    return redirect('menu:menu_list')
                 
                 # Update totals
                 order.subtotal_amount = subtotal
@@ -233,14 +271,22 @@ def checkout_confirm(request):
                     note='Order created, waiting admin confirmation'
                 )
                 
+                # Clear session cart
+                if 'checkout_cart' in request.session:
+                    del request.session['checkout_cart']
+                
                 messages.success(request, f'Order berhasil! Nomor: {order.order_number}')
                 return redirect('orders:order_success', order_number=order.order_number)
         
+        except json.JSONDecodeError:
+            messages.error(request, 'Data cart tidak valid!')
+            return redirect('menu:menu_list')
         except Exception as e:
             messages.error(request, f'Error: {str(e)}')
             return redirect('menu:menu_list')
     
     return redirect('menu:menu_list')
+
 
 
 def order_success(request, order_number):
