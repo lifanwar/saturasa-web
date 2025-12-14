@@ -115,10 +115,16 @@ class MenuItemAdmin(admin.ModelAdmin):
     
     def availability_badge(self, obj):
         """Badge untuk availability."""
-        if obj.is_available:
-            return format_html('<span style="background: green; color: white; padding: 3px 10px; border-radius: 3px;">Available</span>')
-        return format_html('<span style="background: red; color: white; padding: 3px 10px; border-radius: 3px;">Unavailable</span>')
+        color = 'green' if obj.is_available else 'red'
+        text = 'Available' if obj.is_available else 'Unavailable'
+        
+        return format_html(
+            '<span style="background: {}; color: white; padding: 3px 10px; border-radius: 3px; font-size: 11px;">{}</span>',
+            color,
+            text
+        )
     availability_badge.short_description = 'Status'
+    
     
     def best_seller_badge(self, obj):
         """Badge untuk best seller."""
